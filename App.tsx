@@ -35,11 +35,17 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [showTimeoutButton, setShowTimeoutButton] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forceResidentDashboard, setForceResidentDashboard] = useState(false);
 
   useEffect(() => {
     let unsubs: (() => void)[] = [];
+    
+    // 5 saniye sonra hala yükleniyorsa buton göster
+    const timer = setTimeout(() => {
+        if (loading) setShowTimeoutButton(true);
+    }, 5000);
 
     const initApp = async () => {
       try {
@@ -70,20 +76,24 @@ const App: React.FC = () => {
 
       } catch (err: any) {
         console.error("Firebase Sync Error:", err);
-        setError("Veritabanı bağlantısı kurulamadı.");
+        setError("Veritabanı bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin.");
       } finally {
         setLoading(false);
       }
     };
 
     initApp();
-    return () => unsubs.forEach(unsub => unsub());
+    return () => {
+        unsubs.forEach(unsub => unsub());
+        clearTimeout(timer);
+    };
   }, []);
 
   // HANDLERS
   const handleLogin = (identifier: string, pass: string): boolean => {
       const cleanId = identifier.trim().toLowerCase().replace(/\s/g, '');
-      const cleanPass = pass.trim();
+      const cleanPass = pass.trim().replace(/\s/g, '');
+      const cleanPassNoZero = cleanPass.startsWith('0') ? cleanPass.substring(1) : cleanPass;
 
       // SABİT YÖNETİCİ KONTROLÜ
       if (cleanId === 'admin@site.com' && cleanPass === 'admin67') {
@@ -112,7 +122,13 @@ const App: React.FC = () => {
           const emailMatch = dbEmail === cleanId;
           const phoneMatch = dbPhone === cleanId || dbPhoneNoZero === inputIdNoZero;
           
-          return (emailMatch || phoneMatch) && u.password === cleanPass;
+          // Şifre kontrolü (Telefon numarası ise başına 0 koyulup koyulmaması durumunu tolere et)
+          const dbPass = (u.password || '').trim();
+          const dbPassNoZero = dbPass.startsWith('0') ? dbPass.substring(1) : dbPass;
+          
+          const passwordMatch = dbPass === cleanPass || dbPassNoZero === cleanPassNoZero;
+          
+          return (emailMatch || phoneMatch) && passwordMatch;
       });
 
       if (user) {
@@ -228,10 +244,25 @@ const App: React.FC = () => {
     db.saveSession(null);
   };
 
-  if (loading || !siteInfo) return (
-    <div className="h-screen flex flex-col items-center justify-center space-y-4 bg-gray-50">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-indigo-600"></div>
-      <p className="text-indigo-600 font-medium animate-pulse">Bulut verileri senkronize ediliyor...</p>
+  if (loading && !siteInfo) return (
+    <div className="h-screen flex flex-col items-center justify-center space-y-6 bg-gray-50 px-4 text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600"></div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold text-gray-800 tracking-tight">Bulut Sunucusuna Bağlanılıyor</h2>
+        <p className="text-gray-500 font-medium">Lütfen bekleyin, veriler senkronize ediliyor...</p>
+      </div>
+      
+      {showTimeoutButton && (
+          <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+            <button 
+                onClick={() => setLoading(false)}
+                className="px-6 py-3 bg-white border-2 border-indigo-600 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-sm"
+            >
+                Bağlantıyı Beklemeden Başlat
+            </button>
+            <p className="mt-3 text-xs text-gray-400">Not: İnternet hızınız düşükse veriler geç gelebilir.</p>
+          </div>
+      )}
     </div>
   );
 
@@ -252,8 +283,8 @@ const App: React.FC = () => {
           currentUser={currentUser} onLogout={handleLogout}
         />
         <main className="flex-1 overflow-auto p-4 md:p-8">
-          {currentPage === 'dashboard' && <Dashboard currentUser={currentUser} users={users} blocks={blocks} dues={dues} announcements={announcements} siteInfo={siteInfo} setCurrentPage={setCurrentPage} isResidentViewMode={forceResidentDashboard} feedbacks={feedbacks} />}
-          {currentPage === 'admin' && <AdminPanel onAddAnnouncement={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} setCurrentPage={setCurrentPage} siteInfo={siteInfo} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSeedDatabase={() => db.seedDatabase({ users, blocks, announcements })} />}
+          {currentPage === 'dashboard' && <Dashboard currentUser={currentUser} users={users} blocks={blocks} dues={dues} announcements={announcements} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} setCurrentPage={setCurrentPage} isResidentViewMode={forceResidentDashboard} feedbacks={feedbacks} />}
+          {currentPage === 'admin' && <AdminPanel onAddAnnouncement={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} setCurrentPage={setCurrentPage} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSeedDatabase={() => db.seedDatabase({ users, blocks, announcements })} />}
           {currentPage === 'users' && <Users users={users} blocks={blocks} onAddUserAndAssignment={handleAddUserAndAssignment} onUpdateUserAndAssignment={handleUpdateUserAndAssignment} onDeleteUser={handleDeleteUser} onToggleUserStatus={(id, status) => {
               const u = users.find(user => user.id === id);
               if (u) handleUpdateUserAndAssignment({...u, isActive: status}, {blockId: null, apartmentId: null});
@@ -268,11 +299,11 @@ const App: React.FC = () => {
               const b = blocks.find(block => block.id === bid);
               if (b) await db.saveBlock({...b, apartments: b.apartments.filter(a => a.id !== aid)});
           }} onVacateApartment={async (bid, aid) => {
-              const b = blocks.find(block => block.id === bid);
+              const b = blocks.find(block => block.id === aid);
               if (b) await db.saveBlock({...b, apartments: b.apartments.map(a => a.id === aid ? {...a, status: 'Boş', residentId: undefined} : a)});
           }} />}
           {currentPage === 'dues' && <Dues currentUser={currentUser} allDues={dues} />}
-          {currentPage === 'duesManagement' && <DuesManagement users={users} blocks={blocks} allDues={dues} siteInfo={siteInfo} onUpdateDues={handleUpdateDues} />}
+          {currentPage === 'duesManagement' && <DuesManagement users={users} blocks={blocks} allDues={dues} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateDues={handleUpdateDues} />}
           {currentPage === 'announcements' && <Announcements announcements={announcements} currentUser={currentUser} onUpdate={(id, t, c) => db.saveAnnouncement({...announcements.find(a => a.id === id)!, title: t, content: c})} onDelete={id => {}} />}
           {currentPage === 'profile' && <ProfilePage currentUser={currentUser} onUpdateUser={handleUpdateUser} blocks={blocks} />}
           {currentPage === 'expenses' && <Expenses expenses={expenses} onAddExpense={exp => db.saveExpense({...exp, id: Date.now()})} onDeleteExpense={id => {}} />}
