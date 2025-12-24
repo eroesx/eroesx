@@ -36,19 +36,13 @@ const DEFAULT_SITE_INFO: SiteInfo = {
     note: "Ödeme yaparken daire numaranızı belirtiniz."
 };
 
-/**
- * Firestore undefined değerleri kabul etmez. 
- * Bu fonksiyon nesne içindeki undefined değerleri temizler.
- */
 const clean = (data: any) => {
     const cleaned = JSON.parse(JSON.stringify(data));
-    // ID alanının her zaman sayısal olduğundan emin olalım
     if (cleaned.id) cleaned.id = Number(cleaned.id);
     return cleaned;
 };
 
 export const db = {
-    // REAL-TIME SUBSCRIPTIONS
     subscribeToUsers: (callback: (users: User[]) => void) => {
         return onSnapshot(collection(firestore, COLLECTIONS.USERS), (snapshot) => {
             if (snapshot.empty) {
@@ -60,6 +54,9 @@ export const db = {
                 });
                 callback(users);
             }
+        }, (error) => {
+            console.error("Firestore Users Error:", error);
+            callback(mockUsers);
         });
     },
 
@@ -67,7 +64,7 @@ export const db = {
         return onSnapshot(collection(firestore, COLLECTIONS.BLOCKS), (snapshot) => {
             if (snapshot.empty) callback(mockBlocks);
             else callback(snapshot.docs.map(doc => ({ ...doc.data(), id: Number(doc.id) } as Block)));
-        });
+        }, (err) => callback(mockBlocks));
     },
 
     subscribeToAnnouncements: (callback: (announcements: Announcement[]) => void) => {
@@ -75,7 +72,7 @@ export const db = {
         return onSnapshot(q, (snapshot) => {
             if (snapshot.empty) callback(mockAnnouncements);
             else callback(snapshot.docs.map(doc => ({ ...doc.data(), id: Number(doc.id) } as Announcement)));
-        });
+        }, (err) => callback(mockAnnouncements));
     },
 
     subscribeToDues: (callback: (dues: Dues[]) => void) => {
@@ -108,9 +105,17 @@ export const db = {
         });
     },
 
-    // SINGULAR SAVE METHODS
+    subscribeToSiteInfo: (callback: (info: SiteInfo) => void) => {
+        return onSnapshot(doc(firestore, COLLECTIONS.SITE_INFO, 'main'), (docSnap) => {
+            if (docSnap.exists()) {
+                callback(docSnap.data() as SiteInfo);
+            } else {
+                callback(DEFAULT_SITE_INFO);
+            }
+        }, (err) => callback(DEFAULT_SITE_INFO));
+    },
+
     saveUser: async (user: User) => {
-        // ID'yi doküman adı olarak kullanırken string, içerik olarak saklarken number yapıyoruz.
         await setDoc(doc(firestore, COLLECTIONS.USERS, String(user.id)), clean(user));
     },
 
@@ -146,7 +151,6 @@ export const db = {
         await setDoc(doc(firestore, COLLECTIONS.MESSAGES, String(m.id)), clean(m));
     },
 
-    // BULK SAVE METHODS
     saveUsers: async (users: User[]) => {
         for (const user of users) await db.saveUser(user);
     },
@@ -161,14 +165,6 @@ export const db = {
 
     saveDues: async (dues: Dues[]) => {
         for (const d of dues) await db.saveDue(d);
-    },
-
-    saveExpenses: async (expenses: Expense[]) => {
-        for (const e of expenses) await db.saveExpense(e);
-    },
-
-    saveFeedbacks: async (feedbacks: Feedback[]) => {
-        for (const f of feedbacks) await db.saveFeedback(f);
     },
 
     getSiteInfo: async (): Promise<SiteInfo> => {

@@ -48,7 +48,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin, onResetPassword }) => {
         localStorage.removeItem('rememberedIdentifier');
       }
     } else {
-      setError('E-posta/Telefon veya şifre hatalı.');
+      setError('Giriş bilgileri hatalı.');
     }
   };
 
@@ -67,7 +67,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin, onResetPassword }) => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m5-8h1m-1 4h1m-1 4h1M9 3v1m6-1v1" /></svg>
             </div>
             <h1 className="mt-4 text-2xl font-bold text-gray-900">Site Yönetim Sistemi</h1>
-            <p className="text-sm text-gray-600">{isResetMode ? 'Şifre Sıfırlama' : 'Giriş yapmak için e-posta/telefon ve şifrenizi kullanın'}</p>
+            <p className="text-sm text-gray-600">{isResetMode ? 'Şifre Sıfırlama' : 'Sisteme erişmek için giriş yapın'}</p>
         </div>
         
         {resetMessage && (
@@ -79,7 +79,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin, onResetPassword }) => {
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="text-sm font-medium text-gray-700">
-              E-posta veya Telefon No
+              Kullanıcı Adı / E-posta / Telefon
             </label>
             <input
               id="email"
@@ -90,7 +90,7 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin, onResetPassword }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="örnek@site.com veya 5XXXXXXXXX"
+              placeholder={isResetMode ? "E-posta veya Telefon" : "admin, e-posta veya telefon"}
             />
           </div>
           
@@ -144,10 +144,10 @@ const LoginPage: React.FC<LoginProps> = ({ onLogin, onResetPassword }) => {
                     Beni Hatırla
                 </label>
             </div>
-
-            {email !== 'admin@site.com' && (
+            
+            {email !== 'admin' && email !== 'admin@site.com' && (
               <p className="mt-1 text-[10px] text-gray-500 italic">
-                Varsayılan şifreniz sistemde kayıtlı olan birinci cep telefonu numaranızdır.
+                * Sakinler için varsayılan şifre sistemdeki 1. telefon numarasıdır.
               </p>
             )}
           </div>

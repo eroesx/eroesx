@@ -18,6 +18,7 @@ import Neighbors from './pages/Neighbors';
 import FeedbackPage from './pages/Feedback';
 import { Page, User, Announcement, Block, Dues as DuesType, SiteInfo, Expense, Feedback, FeedbackType, NeighborConnection, ChatMessage } from './types';
 import { db } from './services/database';
+import { users as fallbackUsers } from './data/mockData';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -28,7 +29,12 @@ const App: React.FC = () => {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [dues, setDues] = useState<DuesType[]>([]);
-  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>({
+      duesAmount: 500,
+      bankName: "Site Yönetim Bankası",
+      iban: "TR00 0000 0000 0000 0000 0000 00",
+      note: "Ödeme yaparken daire numaranızı belirtiniz."
+  });
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [connections, setConnections] = useState<NeighborConnection[]>([]);
@@ -42,10 +48,9 @@ const App: React.FC = () => {
   useEffect(() => {
     let unsubs: (() => void)[] = [];
     
-    // 5 saniye sonra hala yükleniyorsa buton göster
     const timer = setTimeout(() => {
         if (loading) setShowTimeoutButton(true);
-    }, 5000);
+    }, 4000);
 
     const initApp = async () => {
       try {
@@ -56,7 +61,7 @@ const App: React.FC = () => {
             setUsers(newUsers);
             const savedId = db.getSession();
             if (savedId) {
-                const sessionUser = newUsers.find(u => u.id === savedId);
+                const sessionUser = newUsers.find(u => u.id === savedId) || fallbackUsers.find(u => u.id === savedId);
                 if (sessionUser) {
                     setCurrentUser(sessionUser);
                 }
@@ -70,13 +75,10 @@ const App: React.FC = () => {
         unsubs.push(db.subscribeToFeedbacks(setFeedbacks));
         unsubs.push(db.subscribeToConnections(setConnections));
         unsubs.push(db.subscribeToMessages(setMessages));
-
-        const info = await db.getSiteInfo();
-        setSiteInfo(info);
+        unsubs.push(db.subscribeToSiteInfo(setSiteInfo));
 
       } catch (err: any) {
         console.error("Firebase Sync Error:", err);
-        setError("Veritabanı bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin.");
       } finally {
         setLoading(false);
       }
@@ -92,48 +94,40 @@ const App: React.FC = () => {
   // HANDLERS
   const handleLogin = (identifier: string, pass: string): boolean => {
       const cleanId = identifier.trim().toLowerCase().replace(/\s/g, '');
+      // Fix: Defined cleanIdNoZero here to resolve "Cannot find name 'cleanIdNoZero'"
+      const cleanIdNoZero = cleanId.startsWith('0') ? cleanId.substring(1) : cleanId;
       const cleanPass = pass.trim().replace(/\s/g, '');
       const cleanPassNoZero = cleanPass.startsWith('0') ? cleanPass.substring(1) : cleanPass;
 
-      // SABİT YÖNETİCİ KONTROLÜ
-      if (cleanId === 'admin@site.com' && cleanPass === 'admin67') {
-          const adminUser = users.find(u => u.id === 1) || {
-              id: 1,
-              name: 'Yönetici',
-              email: 'admin@site.com',
-              password: 'admin67',
-              role: 'Yönetici' as const,
-              isActive: true,
-              lastLogin: 'Şimdi'
-          };
+      // 1. ADMIN KONTROLÜ (Sabit admin girişi)
+      if ((cleanId === 'admin' || cleanId === 'admin@site.com') && cleanPass === 'admin67') {
+          const adminUser = users.find(u => u.id === 1) || fallbackUsers.find(u => u.id === 1)!;
           setCurrentUser(adminUser);
           db.saveSession(adminUser.id);
-          db.saveUser({ ...adminUser, password: 'admin67', name: 'Yönetici' });
           return true;
       }
 
-      const user = users.find(u => {
+      // 2. KULLANICI ARAMA (Bulut Veriler + Yerel Veriler)
+      const combinedUsers = [...users, ...fallbackUsers];
+      const user = combinedUsers.find(u => {
           const dbEmail = u.email.trim().toLowerCase();
           const dbPhone = (u.contactNumber1 || '').trim().replace(/\s/g, '');
           const dbPhoneNoZero = dbPhone.startsWith('0') ? dbPhone.substring(1) : dbPhone;
           
-          const inputIdNoZero = cleanId.startsWith('0') ? cleanId.substring(1) : cleanId;
-
           const emailMatch = dbEmail === cleanId;
-          const phoneMatch = dbPhone === cleanId || dbPhoneNoZero === inputIdNoZero;
+          // Fix: Simplified phoneMatch logic using the outer cleanIdNoZero
+          const phoneMatch = dbPhone === cleanId || dbPhoneNoZero === cleanIdNoZero;
           
-          // Şifre kontrolü (Telefon numarası ise başına 0 koyulup koyulmaması durumunu tolere et)
           const dbPass = (u.password || '').trim();
           const dbPassNoZero = dbPass.startsWith('0') ? dbPass.substring(1) : dbPass;
-          
-          const passwordMatch = dbPass === cleanPass || dbPassNoZero === cleanPassNoZero;
+          const passwordMatch = dbPass === cleanPass || dbPassNoZero === cleanPassNoZero || dbPass === cleanPassNoZero;
           
           return (emailMatch || phoneMatch) && passwordMatch;
       });
 
       if (user) {
           if (!user.isActive) {
-              alert("Hesabınız pasif durumdadır. Lütfen yönetimle iletişime geçin.");
+              alert("Hesabınız pasif durumdadır.");
               return false;
           }
           setCurrentUser(user);
@@ -146,8 +140,9 @@ const App: React.FC = () => {
   const handleResetPassword = async (identifier: string) => {
       const cleanId = identifier.trim().toLowerCase().replace(/\s/g, '');
       const cleanIdNoZero = cleanId.startsWith('0') ? cleanId.substring(1) : cleanId;
+      const combinedUsers = [...users, ...fallbackUsers];
 
-      const user = users.find(u => {
+      const user = combinedUsers.find(u => {
           const dbEmail = u.email.toLowerCase();
           const dbPhone = (u.contactNumber1 || '').replace(/\s/g, '');
           const dbPhoneNoZero = dbPhone.startsWith('0') ? dbPhone.substring(1) : dbPhone;
@@ -159,8 +154,8 @@ const App: React.FC = () => {
           type: 'İstek',
           subject: 'Şifre Sıfırlama Talebi',
           content: user 
-            ? `${user.name} kullanıcısı şifre sıfırlama talebinde bulundu.\nGiriş Bilgisi: ${identifier}\nKayıtlı E-posta: ${user.email}\nTelefon: ${user.contactNumber1}`
-            : `Sistemde doğrudan eşleşmeyen bir kullanıcı şifre sıfırlama talebinde bulundu.\nGirilen Bilgi: ${identifier}\nLütfen kullanıcılar listesinden bu bilgiyi kontrol edin.`,
+            ? `${user.name} kullanıcısı şifre sıfırlama talebinde bulundu.\nİletişim: ${user.contactNumber1}`
+            : `Sistemde bulunamayan bir giriş için talep: ${identifier}`,
           createdAt: new Date().toISOString(),
           status: 'Yeni'
       };
@@ -249,19 +244,10 @@ const App: React.FC = () => {
       <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600"></div>
       <div className="space-y-2">
         <h2 className="text-xl font-bold text-gray-800 tracking-tight">Bulut Sunucusuna Bağlanılıyor</h2>
-        <p className="text-gray-500 font-medium">Lütfen bekleyin, veriler senkronize ediliyor...</p>
+        <p className="text-gray-500 font-medium">Veriler senkronize ediliyor...</p>
       </div>
-      
       {showTimeoutButton && (
-          <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-            <button 
-                onClick={() => setLoading(false)}
-                className="px-6 py-3 bg-white border-2 border-indigo-600 text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-sm"
-            >
-                Bağlantıyı Beklemeden Başlat
-            </button>
-            <p className="mt-3 text-xs text-gray-400">Not: İnternet hızınız düşükse veriler geç gelebilir.</p>
-          </div>
+        <button onClick={() => setLoading(false)} className="px-6 py-3 bg-white border-2 border-indigo-600 text-indigo-600 rounded-xl font-bold shadow-sm">Bağlantıyı Beklemeden Başlat</button>
       )}
     </div>
   );
@@ -284,12 +270,12 @@ const App: React.FC = () => {
         />
         <main className="flex-1 overflow-auto p-4 md:p-8">
           {currentPage === 'dashboard' && <Dashboard currentUser={currentUser} users={users} blocks={blocks} dues={dues} announcements={announcements} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} setCurrentPage={setCurrentPage} isResidentViewMode={forceResidentDashboard} feedbacks={feedbacks} />}
-          {currentPage === 'admin' && <AdminPanel onAddAnnouncement={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} setCurrentPage={setCurrentPage} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSeedDatabase={() => db.seedDatabase({ users, blocks, announcements })} />}
-          {currentPage === 'users' && <Users users={users} blocks={blocks} onAddUserAndAssignment={handleAddUserAndAssignment} onUpdateUserAndAssignment={handleUpdateUserAndAssignment} onDeleteUser={handleDeleteUser} onToggleUserStatus={(id, status) => {
-              const u = users.find(user => user.id === id);
+          {currentPage === 'admin' && <AdminPanel onAddAnnouncement={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} setCurrentPage={setCurrentPage} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSeedDatabase={() => db.seedDatabase({ users: fallbackUsers, blocks: blocks.length ? blocks : [], announcements: announcements.length ? announcements : [] })} />}
+          {currentPage === 'users' && <Users users={users.length ? users : fallbackUsers} blocks={blocks} onAddUserAndAssignment={handleAddUserAndAssignment} onUpdateUserAndAssignment={handleUpdateUserAndAssignment} onDeleteUser={handleDeleteUser} onToggleUserStatus={(id, status) => {
+              const u = users.find(user => user.id === id) || fallbackUsers.find(u => u.id === id);
               if (u) handleUpdateUserAndAssignment({...u, isActive: status}, {blockId: null, apartmentId: null});
           }} />}
-          {currentPage === 'blockManagement' && <BlockManagement blocks={blocks} users={users} onDeleteUser={handleDeleteUser} onAddBlock={async name => await db.saveBlock({id: Date.now(), name, apartments: []})} onUpdateBlock={async (id, name) => await db.saveBlock({...blocks.find(b => b.id === id)!, name})} onDeleteBlock={async id => {}} onAddApartment={async (bid, num, rid) => {
+          {currentPage === 'blockManagement' && <BlockManagement blocks={blocks} users={users.length ? users : fallbackUsers} onDeleteUser={handleDeleteUser} onAddBlock={async name => await db.saveBlock({id: Date.now(), name, apartments: []})} onUpdateBlock={async (id, name) => await db.saveBlock({...blocks.find(b => b.id === id)!, name})} onDeleteBlock={async id => {}} onAddApartment={async (bid, num, rid) => {
               const b = blocks.find(block => block.id === bid);
               if (b) await db.saveBlock({...b, apartments: [...b.apartments, {id: Date.now(), number: num, status: rid ? 'Dolu' : 'Boş', residentId: rid}]});
           }} onUpdateApartment={async (bid, apt) => {
@@ -303,13 +289,13 @@ const App: React.FC = () => {
               if (b) await db.saveBlock({...b, apartments: b.apartments.map(a => a.id === aid ? {...a, status: 'Boş', residentId: undefined} : a)});
           }} />}
           {currentPage === 'dues' && <Dues currentUser={currentUser} allDues={dues} />}
-          {currentPage === 'duesManagement' && <DuesManagement users={users} blocks={blocks} allDues={dues} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateDues={handleUpdateDues} />}
+          {currentPage === 'duesManagement' && <DuesManagement users={users.length ? users : fallbackUsers} blocks={blocks} allDues={dues} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateDues={handleUpdateDues} />}
           {currentPage === 'announcements' && <Announcements announcements={announcements} currentUser={currentUser} onUpdate={(id, t, c) => db.saveAnnouncement({...announcements.find(a => a.id === id)!, title: t, content: c})} onDelete={id => {}} />}
           {currentPage === 'profile' && <ProfilePage currentUser={currentUser} onUpdateUser={handleUpdateUser} blocks={blocks} />}
           {currentPage === 'expenses' && <Expenses expenses={expenses} onAddExpense={exp => db.saveExpense({...exp, id: Date.now()})} onDeleteExpense={id => {}} />}
-          {currentPage === 'feedback' && <FeedbackPage currentUser={currentUser} users={users} blocks={blocks} feedbacks={feedbacks} onAddFeedback={(uid, t, s, c) => db.saveFeedback({id: Date.now(), userId: uid, type: t, subject: s, content: c, createdAt: new Date().toISOString(), status: 'Yeni'})} onUpdateStatus={(id, s) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: s})} onRespond={(id, r) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: 'Yanıtlandı', adminResponse: r, responseDate: new Date().toISOString()})} isResidentViewMode={forceResidentDashboard} />}
-          {currentPage === 'plateInquiry' && <PlateInquiry users={users} blocks={blocks} />}
-          {currentPage === 'neighbors' && <Neighbors currentUser={currentUser} users={users} blocks={blocks} connections={connections} messages={messages} onSendRequest={(req, res) => db.saveConnection({id: Date.now(), requesterId: req, receiverId: res, status: 'pending'})} onUpdateStatus={(id, s) => db.saveConnection({...connections.find(c => c.id === id)!, status: s})} onSendMessage={(s, r, c) => db.saveMessage({id: Date.now(), senderId: s, receiverId: r, content: c, timestamp: new Date().toISOString(), read: false})} />}
+          {currentPage === 'feedback' && <FeedbackPage currentUser={currentUser} users={users.length ? users : fallbackUsers} blocks={blocks} feedbacks={feedbacks} onAddFeedback={(uid, t, s, c) => db.saveFeedback({id: Date.now(), userId: uid, type: t, subject: s, content: c, createdAt: new Date().toISOString(), status: 'Yeni'})} onUpdateStatus={(id, s) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: s})} onRespond={(id, r) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: 'Yanıtlandı', adminResponse: r, responseDate: new Date().toISOString()})} isResidentViewMode={forceResidentDashboard} />}
+          {currentPage === 'plateInquiry' && <PlateInquiry users={users.length ? users : fallbackUsers} blocks={blocks} />}
+          {currentPage === 'neighbors' && <Neighbors currentUser={currentUser} users={users.length ? users : fallbackUsers} blocks={blocks} connections={connections} messages={messages} onSendRequest={(req, res) => db.saveConnection({id: Date.now(), requesterId: req, receiverId: res, status: 'pending'})} onUpdateStatus={(id, s) => db.saveConnection({...connections.find(c => c.id === id)!, status: s})} onSendMessage={(s, r, c) => db.saveMessage({id: Date.now(), senderId: s, receiverId: r, content: c, timestamp: new Date().toISOString(), read: false})} />}
         </main>
       </div>
     </div>

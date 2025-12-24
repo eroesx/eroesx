@@ -20,6 +20,7 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
     const [defaultAmount, setDefaultAmount] = useState<number>(siteInfo.duesAmount);
     
     // New Filters
+    const [searchTerm, setSearchTerm] = useState('');
     const [filterBlockId, setFilterBlockId] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'unpaid'>('all');
 
@@ -49,7 +50,13 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
         // 1. Base Filter: Active Users & Non-Admins (or admins with apartments)
         let result = users.filter(u => u.isActive && (u.role !== 'Yönetici' || (u.vehiclePlate1 || u.vehiclePlate2)));
 
-        // 2. Block Filter
+        // 2. Search Term Filter (Case insensitive Turkish)
+        if (searchTerm) {
+            const lowerSearch = searchTerm.toLocaleLowerCase('tr-TR');
+            result = result.filter(u => u.name.toLocaleLowerCase('tr-TR').includes(lowerSearch));
+        }
+
+        // 3. Block Filter
         if (filterBlockId !== 'all') {
             const targetBlockId = parseInt(filterBlockId);
             result = result.filter(u => {
@@ -58,7 +65,7 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
             });
         }
 
-        // 3. Status Filter
+        // 4. Status Filter
         if (filterStatus !== 'all') {
             result = result.filter(u => {
                 const dueRecord = allDues.find(d => d.userId === u.id && d.month === fullMonthString);
@@ -71,7 +78,7 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
         }
 
         return result;
-    }, [users, blocks, allDues, filterBlockId, filterStatus, fullMonthString]);
+    }, [users, blocks, allDues, filterBlockId, filterStatus, fullMonthString, searchTerm]);
 
     const handleToggleStatus = (userId: number, currentStatus: 'Ödendi' | 'Ödenmedi' | 'Yok') => {
         const newStatus = currentStatus === 'Ödendi' ? 'Ödenmedi' : 'Ödendi';
@@ -84,9 +91,7 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
             return;
         }
 
-        const confirmMessage = filterBlockId !== 'all' 
-            ? `${fullMonthString} dönemi için SEÇİLİ BLOKTAKİ (${filteredResidents.length} kişi) durumu '${status}' olarak güncellenecek. Onaylıyor musunuz?`
-            : `${fullMonthString} dönemi için LİSTELENEN (${filteredResidents.length} kişi) durumu '${status}' olarak güncellenecek. Onaylıyor musunuz?`;
+        const confirmMessage = `${fullMonthString} dönemi için LİSTELENEN (${filteredResidents.length} kişi) durumu '${status}' olarak güncellenecek. Onaylıyor musunuz?`;
 
         if (window.confirm(confirmMessage)) {
             filteredResidents.forEach(user => {
@@ -141,11 +146,26 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                 <div className="flex flex-col lg:flex-row justify-between items-end gap-4">
                     <div className="flex flex-wrap gap-4 w-full lg:w-auto">
                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">İsimle Ara</label>
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="Sakin ismi..."
+                                    className="block w-full sm:w-48 pl-8 pr-3 py-2 text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 border"
+                                />
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-2.5 top-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Blok Filtrele</label>
                             <select 
                                 value={filterBlockId} 
                                 onChange={(e) => setFilterBlockId(e.target.value)}
-                                className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                className="block w-full sm:w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
                             >
                                 <option value="all">Tüm Bloklar</option>
                                 {blocks.map(b => (
@@ -158,7 +178,7 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                             <select 
                                 value={filterStatus} 
                                 onChange={(e) => setFilterStatus(e.target.value as any)}
-                                className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                className="block w-full sm:w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
                             >
                                 <option value="all">Tümü</option>
                                 <option value="paid">Ödenenler</option>
@@ -172,13 +192,13 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                             onClick={() => handleBulkUpdate('Ödendi')}
                             className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-sm whitespace-nowrap"
                         >
-                            Tümünü Ödendi Yap
+                            Filtrelenenleri Ödendi Yap
                         </button>
                         <button 
                             onClick={() => handleBulkUpdate('Ödenmedi')}
                             className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm whitespace-nowrap"
                         >
-                            Tümünü Ödenmedi Yap
+                            Filtrelenenleri Ödenmedi Yap
                         </button>
                     </div>
                 </div>

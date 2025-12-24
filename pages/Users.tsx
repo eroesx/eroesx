@@ -21,6 +21,7 @@ const UserModal: React.FC<{
     // Basic Info
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [role, setRole] = useState<UserRole>('Kiracı');
     const [isActive, setIsActive] = useState(true);
     
@@ -45,6 +46,7 @@ const UserModal: React.FC<{
         if (userToEdit) {
             setName(userToEdit.name);
             setEmail(userToEdit.email);
+            setPassword(userToEdit.password || '');
             setRole(userToEdit.role);
             setIsActive(userToEdit.isActive);
             setVehiclePlate1(userToEdit.vehiclePlate1 || '');
@@ -71,6 +73,7 @@ const UserModal: React.FC<{
         } else {
             setName('');
             setEmail('');
+            setPassword('');
             setRole('Kiracı');
             setIsActive(true);
             setSelectedBlockId('');
@@ -91,8 +94,8 @@ const UserModal: React.FC<{
             email, 
             role, 
             isActive,
-            // ŞİFRE: Eğer yeni kullanıcıysa telefon numarası, düzenleme ise mevcut şifre korunur
-            password: userToEdit ? userToEdit.password : (contactNumber1 ? contactNumber1.trim() : '123456'),
+            // ŞİFRE: Eğer input boşsa ve yeni kullanıcıysa telefon, aksi halde girilen şifre
+            password: password.trim() || (userToEdit ? userToEdit.password : (contactNumber1 ? contactNumber1.trim() : '123456')),
             vehiclePlate1,
             vehiclePlate2,
             contactNumber1,
@@ -130,9 +133,11 @@ const UserModal: React.FC<{
             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl my-8">
                 <h2 className="text-xl font-bold mb-6 border-b pb-2">{userToEdit ? 'Kullanıcıyı Düzenle' : 'Yeni Kullanıcı Ekle'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <p className="text-xs text-indigo-600 bg-indigo-50 p-2 rounded italic">
-                        * Yeni eklenen kullanıcıların giriş şifresi otomatik olarak "1. Telefon" numarası olarak atanacaktır.
-                    </p>
+                    {!userToEdit && (
+                        <p className="text-xs text-indigo-600 bg-indigo-50 p-2 rounded italic">
+                            * Yeni eklenen kullanıcıların giriş şifresi otomatik olarak "1. Telefon" numarası olarak atanacaktır.
+                        </p>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">İsim Soyisim</label>
@@ -145,7 +150,17 @@ const UserModal: React.FC<{
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Giriş Şifresi</label>
+                            <input 
+                                type="text" 
+                                value={password} 
+                                onChange={e => setPassword(e.target.value)} 
+                                className="mt-1 block w-full px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 font-mono text-indigo-900" 
+                                placeholder={userToEdit ? "Mevcut şifre" : "Otomatik atanacak"}
+                            />
+                        </div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700">Rol</label>
                             <select value={role} onChange={e => setRole(e.target.value as UserRole)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="Yönetici">Yönetici</option>
@@ -153,7 +168,10 @@ const UserModal: React.FC<{
                                 <option value="Kiracı">Kiracı</option>
                             </select>
                         </div>
-                        <div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-start-2">
                             <label className="block text-sm font-medium text-gray-700">Durum</label>
                             <select value={String(isActive)} onChange={handleStatusChange} className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${!isActive ? 'bg-red-50 text-red-700 border-red-300' : 'bg-white'}`}>
                                 <option value="true">Aktif</option>
@@ -180,10 +198,10 @@ const UserModal: React.FC<{
                     </div>
 
                     <div className="border-t pt-4 mt-2">
-                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">İletişim Bilgileri (Şifre İçin Gerekli)</h3>
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">İletişim Bilgileri</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">1. Telefon (Şifre Olacak)</label>
+                                <label className="block text-sm font-medium text-gray-700">1. Telefon</label>
                                 <input type="tel" value={contactNumber1} onChange={e => setContactNumber1(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="Örn: 555-123-4567" />
                             </div>
                             <div>
