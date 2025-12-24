@@ -6,6 +6,7 @@ import { Block, Apartment, User } from '../types';
 interface BlockManagementProps {
     blocks: Block[];
     users: User[];
+    onDeleteUser: (id: number) => void;
     onAddBlock: (name: string) => void;
     onUpdateBlock: (id: number, name: string) => void;
     onDeleteBlock: (id: number) => void;
@@ -33,7 +34,7 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 
 // Main Component
 const BlockManagement: React.FC<BlockManagementProps> = (props) => {
-    const { blocks, users, onAddBlock, onUpdateBlock, onDeleteBlock, onAddApartment, onUpdateApartment, onDeleteApartment, onVacateApartment } = props;
+    const { blocks, users, onDeleteUser, onAddBlock, onUpdateBlock, onDeleteBlock, onAddApartment, onUpdateApartment, onDeleteApartment, onVacateApartment } = props;
 
     const [isBlockModalOpen, setBlockModalOpen] = useState(false);
     const [isAptModalOpen, setAptModalOpen] = useState(false);
@@ -44,6 +45,7 @@ const BlockManagement: React.FC<BlockManagementProps> = (props) => {
     const [blockName, setBlockName] = useState('');
     const [aptNumber, setAptNumber] = useState('');
     const [aptResidentId, setAptResidentId] = useState<string>('');
+    const [shouldDeleteResident, setShouldDeleteResident] = useState(false);
     const [filterBlockId, setFilterBlockId] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<'all' | 'Dolu' | 'Boş'>('all');
     
@@ -91,15 +93,44 @@ const BlockManagement: React.FC<BlockManagementProps> = (props) => {
     const handleOpenAptModal = (blockId: number, apt: Apartment | null = null) => {
         setEditingApt(apt ? { blockId, apt } : { blockId, apt: {} });
         setAptNumber(apt?.number || '');
-        // Ensure that if apt.residentId is undefined, it defaults to empty string, selecting "Boş"
         setAptResidentId(apt?.residentId?.toString() || '');
+        setShouldDeleteResident(false);
         setAptModalOpen(true);
     };
+
+    const handleVacateCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const checked = e.target.checked;
+        if (checked) {
+            // If the apartment has a resident, ask for deletion
+            if (editingApt?.apt?.residentId) {
+                const resident = users.find(u => u.id === editingApt.apt.residentId);
+                const confirmDelete = window.confirm(
+                    `${resident?.name || 'Bu kullanıcıyı'} tüm verileriyle birlikte silmek istiyor musunuz?\n\nEvet: Kullanıcı silinir ve daire boşalır.\nHayır: Kullanıcı silinmez sadece daireden ayrılır.`
+                );
+                if (confirmDelete) {
+                    setShouldDeleteResident(true);
+                } else {
+                    setShouldDeleteResident(false);
+                }
+            }
+            setAptResidentId('');
+        } else {
+            // Restore original resident if they uncheck "Vacate" before saving
+            setAptResidentId(editingApt?.apt?.residentId?.toString() || '');
+            setShouldDeleteResident(false);
+        }
+    };
+
     const handleSaveApt = () => {
         if (!editingApt || !aptNumber.trim()) return;
         
         const residentId = aptResidentId ? Number(aptResidentId) : undefined;
         const newStatus = residentId !== undefined ? 'Dolu' : 'Boş';
+
+        // Perform deletion if confirmed
+        if (shouldDeleteResident && editingApt.apt.residentId) {
+            onDeleteUser(editingApt.apt.residentId);
+        }
 
         if(editingApt.apt.id) { // Editing
             onUpdateApartment(editingApt.blockId, { ...editingApt.apt as Apartment, number: aptNumber, status: newStatus, residentId: residentId });
@@ -129,7 +160,10 @@ const BlockManagement: React.FC<BlockManagementProps> = (props) => {
                         <label className="block text-sm font-medium text-gray-700">Sakin Ata (İsteğe Bağlı)</label>
                         <select
                             value={aptResidentId}
-                            onChange={e => setAptResidentId(e.target.value)}
+                            onChange={e => {
+                                setAptResidentId(e.target.value);
+                                setShouldDeleteResident(false);
+                            }}
                             className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                         >
                             <option value="">Boş</option>
@@ -144,22 +178,26 @@ const BlockManagement: React.FC<BlockManagementProps> = (props) => {
                                 <option key={user.id} value={user.id}>{user.name}</option>
                             ))}
                         </select>
-                        <div className="flex items-center mt-2">
+                        <div className="flex items-center mt-4 p-3 bg-red-50 rounded-lg border border-red-100">
                             <input 
                                 id="vacate-apt-check"
                                 type="checkbox" 
                                 checked={!aptResidentId} 
-                                onChange={(e) => {
-                                    if (e.target.checked) setAptResidentId('');
-                                }}
-                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                onChange={handleVacateCheckboxChange}
+                                className="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
                             />
-                            <label htmlFor="vacate-apt-check" className="ml-2 text-sm text-gray-600 cursor-pointer">Daireyi Boşalt</label>
+                            <label htmlFor="vacate-apt-check" className="ml-2 text-sm text-red-700 font-semibold cursor-pointer select-none">Daireyi Boşalt</label>
                         </div>
+                        {shouldDeleteResident && (
+                            <p className="mt-2 text-xs text-red-600 font-bold animate-pulse italic">
+                                * Kaydet butonuna basıldığında bu kullanıcı sistemden tamamen silinecektir!
+                            </p>
+                        )}
                     </div>
                 </div>
-                <div className="flex justify-end mt-4">
-                    <button onClick={handleSaveApt} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Kaydet</button>
+                <div className="flex justify-end mt-6 gap-3">
+                    <button onClick={() => setAptModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">İptal</button>
+                    <button onClick={handleSaveApt} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-semibold shadow-md">Değişiklikleri Kaydet</button>
                 </div>
             </Modal>
             

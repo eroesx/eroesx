@@ -9,6 +9,7 @@ interface ProfilePageProps {
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, blocks }) => {
+    // Form States
     const [name, setName] = useState(currentUser.name);
     const [email, setEmail] = useState(currentUser.email);
     const [role, setRole] = useState<UserRole>(currentUser.role);
@@ -21,9 +22,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, bl
     const [contactNumber2, setContactNumber2] = useState(currentUser.contactNumber2 || '');
 
     const [apartmentInfo, setApartmentInfo] = useState<string>('Atanmamış');
-
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+
+    // KRİTİK: currentUser prop'u her güncellendiğinde (DB'den yeni veri geldiğinde) 
+    // yerel input state'lerini güncelle. Bu sayede "eski verinin geri gelmesi" sorunu çözülür.
+    useEffect(() => {
+        setName(currentUser.name);
+        setEmail(currentUser.email);
+        setRole(currentUser.role);
+        setVehiclePlate1(currentUser.vehiclePlate1 || '');
+        setVehiclePlate2(currentUser.vehiclePlate2 || '');
+        setContactNumber1(currentUser.contactNumber1 || '');
+        setContactNumber2(currentUser.contactNumber2 || '');
+    }, [currentUser]);
 
     useEffect(() => {
         let found = false;
@@ -39,18 +51,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, bl
         }
     }, [currentUser, blocks]);
 
-    useEffect(() => {
-        // When currentUser changes (e.g. after update), sync local state
-        setRole(currentUser.role);
-    }, [currentUser]);
-
-    useEffect(() => {
-        if (successMessage) {
-            const timer = setTimeout(() => setSuccessMessage(''), 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [successMessage]);
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMessage('');
@@ -64,14 +64,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, bl
 
         const updatedUser: User = {
             ...currentUser,
-            name,
-            email,
+            name: name.trim(),
+            email: email.trim(),
             role,
             password: password || currentUser.password,
-            vehiclePlate1,
-            vehiclePlate2,
-            contactNumber1,
-            contactNumber2,
+            vehiclePlate1: vehiclePlate1.trim(),
+            vehiclePlate2: vehiclePlate2.trim(),
+            contactNumber1: contactNumber1.trim(),
+            contactNumber2: contactNumber2.trim(),
         };
 
         onUpdateUser(updatedUser);
@@ -100,7 +100,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, bl
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 
-                {/* Daire Bilgisi */}
                 <fieldset className="border p-4 rounded-md">
                     <legend className="px-2 text-sm font-medium text-gray-600">Daire Bilgisi</legend>
                     <div className="space-y-4">
@@ -118,12 +117,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, bl
                             >
                                 <option value="Daire Sahibi">Daire Sahibi</option>
                                 <option value="Kiracı">Kiracı</option>
+                                {currentUser.role === 'Yönetici' && <option value="Yönetici">Yönetici</option>}
                             </select>
                         </div>
                     </div>
                 </fieldset>
 
-                {/* Temel Bilgiler */}
                 <fieldset className="border p-4 rounded-md">
                     <legend className="px-2 text-sm font-medium text-gray-600">Temel Bilgiler</legend>
                     <div className="space-y-4">
@@ -132,39 +131,36 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, bl
                             <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
                         </div>
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">E-posta Adresi</label>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">E-posta Adresi (Giriş Adı)</label>
                             <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
                         </div>
                     </div>
                 </fieldset>
                 
-                {/* Araç ve İletişim Bilgileri */}
                 <fieldset className="border p-4 rounded-md">
                     <legend className="px-2 text-sm font-medium text-gray-600">Araç ve İletişim Bilgileri</legend>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="vehiclePlate1" className="block text-sm font-medium text-gray-700">1. Araç Plakası</label>
-                            <input type="text" id="vehiclePlate1" value={vehiclePlate1} onChange={e => setVehiclePlate1(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="Örn: 34 ABC 123" />
+                            <input type="text" id="vehiclePlate1" value={vehiclePlate1} onChange={e => setVehiclePlate1(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" />
                         </div>
                          <div>
                             <label htmlFor="vehiclePlate2" className="block text-sm font-medium text-gray-700">2. Araç Plakası</label>
-                            <input type="text" id="vehiclePlate2" value={vehiclePlate2} onChange={e => setVehiclePlate2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="Varsa giriniz" />
+                            <input type="text" id="vehiclePlate2" value={vehiclePlate2} onChange={e => setVehiclePlate2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" />
                         </div>
                         <div>
                             <label htmlFor="contactNumber1" className="block text-sm font-medium text-gray-700">1. İrtibat Numarası</label>
-                            <input type="tel" id="contactNumber1" value={contactNumber1} onChange={e => setContactNumber1(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="Örn: 555-123-4567" />
+                            <input type="tel" id="contactNumber1" value={contactNumber1} onChange={e => setContactNumber1(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" />
                         </div>
                         <div>
                             <label htmlFor="contactNumber2" className="block text-sm font-medium text-gray-700">2. İrtibat Numarası</label>
-                            <input type="tel" id="contactNumber2" value={contactNumber2} onChange={e => setContactNumber2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="Varsa giriniz" />
+                            <input type="tel" id="contactNumber2" value={contactNumber2} onChange={e => setContactNumber2(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" />
                         </div>
                      </div>
                 </fieldset>
 
-                {/* Şifre Değiştirme */}
                 <fieldset className="border p-4 rounded-md">
                     <legend className="px-2 text-sm font-medium text-gray-600">Şifre Değiştirme</legend>
-                    <p className="text-xs text-gray-600 mb-4">Şifrenizi değiştirmek isterseniz yeni şifrenizi girin. Değiştirmek istemiyorsanız bu alanı boş bırakın.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700">Yeni Şifre</label>
@@ -178,8 +174,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, onUpdateUser, bl
                 </fieldset>
 
                 <div className="flex justify-end pt-4">
-                    <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-semibold">
-                        Değişiklikleri Kaydet
+                    <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-semibold shadow-md">
+                        Bilgilerimi Güncelle
                     </button>
                 </div>
             </form>
