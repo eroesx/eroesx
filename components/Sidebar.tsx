@@ -1,3 +1,4 @@
+
 import React, { useMemo, useRef } from 'react';
 import { Page, User, UserRole, Feedback } from '../types';
 
@@ -10,6 +11,7 @@ interface SidebarProps {
   onLogoDoubleClick: () => void;
   isResidentViewMode?: boolean;
   feedbacks: Feedback[];
+  onLogout: () => void;
 }
 
 // SVG Icons
@@ -25,6 +27,7 @@ const BuildingOfficeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" classNa
 const TruckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 012-2v0a2 2 0 012 2v0" /></svg>;
 const ChatIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>;
 const ClipboardListIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>;
+const LogoutIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
 
 const NavLink: React.FC<{
   icon: React.ReactNode;
@@ -61,7 +64,8 @@ const navItemDefinitions: { page: Page; label: string; icon: React.ReactNode }[]
     { page: 'admin', label: 'Yönetim Paneli', icon: <ShieldCheckIcon /> },
     { page: 'blockManagement', label: 'Blok & Daire Yönetimi', icon: <BuildingOfficeIcon />},
     { page: 'plateInquiry', label: 'Araç Sorgulama', icon: <TruckIcon /> },
-    { page: 'dues', label: 'Aidat Takibi', icon: <CashIcon /> },
+    { page: 'duesManagement', label: 'Aidat Takibi', icon: <CashIcon /> }, // Yöneticiler için analiz ekranı
+    { page: 'dues', label: 'Aidat Geçmişim', icon: <CashIcon /> }, // Sakinler için kendi ödemeleri
     { page: 'neighbors', label: 'Komşular', icon: <ChatIcon /> },
     { page: 'announcements', label: 'Duyurular', icon: <MegaphoneIcon /> },
     { page: 'feedback', label: 'Öneri/Şikayet', icon: <ClipboardListIcon /> },
@@ -72,9 +76,9 @@ const navItemDefinitions: { page: Page; label: string; icon: React.ReactNode }[]
 
 // Rol tabanlı izinler bu yapılandırma nesnesinde yönetilir.
 const rolePermissions: Record<UserRole, Page[]> = {
-  'Yönetici': ['dashboard', 'admin', 'blockManagement', 'plateInquiry', 'dues', 'neighbors', 'announcements', 'feedback', 'users', 'expenses', 'settings'],
-  'Daire Sahibi': ['dashboard', 'announcements', 'neighbors', 'feedback', 'settings'],
-  'Kiracı': ['dashboard', 'announcements', 'neighbors', 'feedback'],
+  'Yönetici': ['dashboard', 'admin', 'blockManagement', 'plateInquiry', 'duesManagement', 'neighbors', 'announcements', 'feedback', 'users', 'expenses', 'settings'],
+  'Daire Sahibi': ['dashboard', 'announcements', 'neighbors', 'feedback', 'dues'],
+  'Kiracı': ['dashboard', 'announcements', 'neighbors', 'feedback', 'dues'],
 };
 
 // Bu fonksiyon, mevcut kullanıcının rolüne göre navigasyon öğelerini filtreler.
@@ -84,7 +88,7 @@ const getNavItemsForRole = (role: UserRole): { page: Page; label: string; icon: 
 };
 
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSidebarOpen, setSidebarOpen, currentUser, onLogoDoubleClick, isResidentViewMode = false, feedbacks }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSidebarOpen, setSidebarOpen, currentUser, onLogoDoubleClick, isResidentViewMode = false, feedbacks, onLogout }) => {
   
   const handleNavigation = (page: Page) => {
     setCurrentPage(page);
@@ -105,8 +109,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
 
   // If Manager is in "Resident View Mode", filter out admin-specific pages from the sidebar
   if (currentUser.role === 'Yönetici' && isResidentViewMode) {
-      const hiddenPages: Page[] = ['admin', 'blockManagement', 'users', 'expenses'];
+      const hiddenPages: Page[] = ['admin', 'blockManagement', 'users', 'expenses', 'settings', 'duesManagement'];
       navItems = navItems.filter(item => !hiddenPages.includes(item.page));
+      // Show individual dues history in resident mode
+      if (!navItems.some(i => i.page === 'dues')) {
+          const duesItem = navItemDefinitions.find(i => i.page === 'dues');
+          if (duesItem) navItems.push(duesItem);
+      }
   }
   
   // Calculate unread feedbacks
@@ -158,7 +167,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
           <h2 className="mt-2 text-xl font-semibold text-white">Site Yönetimi</h2>
         </div>
         
-        <nav className="flex-1">
+        <nav className="flex-1 overflow-y-auto">
           {navItems.map((item) => {
              let badgeCount = 0;
              if (item.page === 'feedback') {
@@ -177,6 +186,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
              );
           })}
         </nav>
+
+        {/* Sidebar Footer with Logout */}
+        <div className="pt-4 border-t border-gray-700">
+            <button
+                onClick={onLogout}
+                className="flex items-center w-full px-4 py-3 text-gray-400 transition-colors duration-200 transform rounded-lg hover:bg-red-900/30 hover:text-red-400 group"
+            >
+                <div className="flex items-center">
+                    <LogoutIcon />
+                    <span className="mx-4 font-medium">Çıkış Yap</span>
+                </div>
+            </button>
+        </div>
         
       </aside>
     </>

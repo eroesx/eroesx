@@ -23,18 +23,14 @@ import { users as fallbackUsers } from './data/mockData';
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const [users, setUsers] = useState<User[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [dues, setDues] = useState<DuesType[]>([]);
-  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>({
-      duesAmount: 500,
-      bankName: "Site Yönetim Bankası",
-      iban: "TR00 0000 0000 0000 0000 0000 00",
-      note: "Ödeme yaparken daire numaranızı belirtiniz."
-  });
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [connections, setConnections] = useState<NeighborConnection[]>([]);
@@ -60,7 +56,7 @@ const App: React.FC = () => {
         unsubs.push(db.subscribeToUsers((newUsers) => {
             setUsers(newUsers);
             const savedId = db.getSession();
-            if (savedId) {
+            if (savedId && !currentUser) {
                 const sessionUser = newUsers.find(u => u.id === savedId) || fallbackUsers.find(u => u.id === savedId);
                 if (sessionUser) {
                     setCurrentUser(sessionUser);
@@ -91,15 +87,25 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Login Bypass Logic
+  useEffect(() => {
+      // Eğer site bilgisi yüklendiyse ve giriş ekranı aktif değilse, kullanıcı yoksa otomatik giriş yap
+      // Bu kontrol artık tüm uygulama için geçerli. isLoginActive true ise LoginPage zorunlu.
+      if (siteInfo && siteInfo.isLoginActive === false && !currentUser && !loading) {
+          const adminUser = users.find(u => u.id === 1) || fallbackUsers.find(u => u.id === 1);
+          if (adminUser) {
+            setCurrentUser(adminUser);
+          }
+      }
+  }, [siteInfo, currentUser, loading, users]);
+
   // HANDLERS
   const handleLogin = (identifier: string, pass: string): boolean => {
       const cleanId = identifier.trim().toLowerCase().replace(/\s/g, '');
-      // Fix: Defined cleanIdNoZero here to resolve "Cannot find name 'cleanIdNoZero'"
       const cleanIdNoZero = cleanId.startsWith('0') ? cleanId.substring(1) : cleanId;
       const cleanPass = pass.trim().replace(/\s/g, '');
       const cleanPassNoZero = cleanPass.startsWith('0') ? cleanPass.substring(1) : cleanPass;
 
-      // 1. ADMIN KONTROLÜ (Sabit admin girişi)
       if ((cleanId === 'admin' || cleanId === 'admin@site.com') && cleanPass === 'admin67') {
           const adminUser = users.find(u => u.id === 1) || fallbackUsers.find(u => u.id === 1)!;
           setCurrentUser(adminUser);
@@ -107,7 +113,6 @@ const App: React.FC = () => {
           return true;
       }
 
-      // 2. KULLANICI ARAMA (Bulut Veriler + Yerel Veriler)
       const combinedUsers = [...users, ...fallbackUsers];
       const user = combinedUsers.find(u => {
           const dbEmail = u.email.trim().toLowerCase();
@@ -115,7 +120,6 @@ const App: React.FC = () => {
           const dbPhoneNoZero = dbPhone.startsWith('0') ? dbPhone.substring(1) : dbPhone;
           
           const emailMatch = dbEmail === cleanId;
-          // Fix: Simplified phoneMatch logic using the outer cleanIdNoZero
           const phoneMatch = dbPhone === cleanId || dbPhoneNoZero === cleanIdNoZero;
           
           const dbPass = (u.password || '').trim();
@@ -235,11 +239,13 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    db.saveSession(null);
+    if (window.confirm("Çıkış yapmak istediğinize emin misiniz?")) {
+        setCurrentUser(null);
+        db.saveSession(null);
+    }
   };
 
-  if (loading && !siteInfo) return (
+  if (loading || !siteInfo) return (
     <div className="h-screen flex flex-col items-center justify-center space-y-6 bg-gray-50 px-4 text-center">
       <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600"></div>
       <div className="space-y-2">
@@ -252,25 +258,32 @@ const App: React.FC = () => {
     </div>
   );
 
-  if (!currentUser) return <LoginPage onLogin={handleLogin} onResetPassword={handleResetPassword} />;
+  // Giriş kontrolü (Eğer isLoginActive true ise LoginPage gösterilir)
+  // Bu parametre artık tüm kullanıcılar (Yönetici dahil) için geçerli.
+  if (siteInfo.isLoginActive && !currentUser) {
+      return <LoginPage onLogin={handleLogin} onResetPassword={handleResetPassword} />;
+  }
+
+  const displayUser = currentUser || fallbackUsers[0];
 
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar 
         currentPage={currentPage} setCurrentPage={setCurrentPage}
         isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen}
-        currentUser={currentUser} onLogoDoubleClick={() => setForceResidentDashboard(!forceResidentDashboard)}
+        currentUser={displayUser} onLogoDoubleClick={() => setForceResidentDashboard(!forceResidentDashboard)}
         feedbacks={feedbacks}
+        onLogout={handleLogout}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           currentPage={currentPage} setCurrentPage={setCurrentPage}
           toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} 
-          currentUser={currentUser} onLogout={handleLogout}
+          currentUser={displayUser} onLogout={handleLogout}
         />
         <main className="flex-1 overflow-auto p-4 md:p-8">
-          {currentPage === 'dashboard' && <Dashboard currentUser={currentUser} users={users} blocks={blocks} dues={dues} announcements={announcements} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} setCurrentPage={setCurrentPage} isResidentViewMode={forceResidentDashboard} feedbacks={feedbacks} />}
-          {currentPage === 'admin' && <AdminPanel onAddAnnouncement={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} setCurrentPage={setCurrentPage} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSeedDatabase={() => db.seedDatabase({ users: fallbackUsers, blocks: blocks.length ? blocks : [], announcements: announcements.length ? announcements : [] })} />}
+          {currentPage === 'dashboard' && <Dashboard currentUser={displayUser} users={users} blocks={blocks} dues={dues} announcements={announcements} siteInfo={siteInfo} setCurrentPage={setCurrentPage} isResidentViewMode={forceResidentDashboard} feedbacks={feedbacks} />}
+          {currentPage === 'admin' && <AdminPanel onAddAnnouncement={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} setCurrentPage={setCurrentPage} siteInfo={siteInfo} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSeedDatabase={() => db.seedDatabase({ users: fallbackUsers, blocks: blocks.length ? blocks : [], announcements: announcements.length ? announcements : [] })} />}
           {currentPage === 'users' && <Users users={users.length ? users : fallbackUsers} blocks={blocks} onAddUserAndAssignment={handleAddUserAndAssignment} onUpdateUserAndAssignment={handleUpdateUserAndAssignment} onDeleteUser={handleDeleteUser} onToggleUserStatus={(id, status) => {
               const u = users.find(user => user.id === id) || fallbackUsers.find(u => u.id === id);
               if (u) handleUpdateUserAndAssignment({...u, isActive: status}, {blockId: null, apartmentId: null});
@@ -288,14 +301,15 @@ const App: React.FC = () => {
               const b = blocks.find(block => block.id === aid);
               if (b) await db.saveBlock({...b, apartments: b.apartments.map(a => a.id === aid ? {...a, status: 'Boş', residentId: undefined} : a)});
           }} />}
-          {currentPage === 'dues' && <Dues currentUser={currentUser} allDues={dues} />}
-          {currentPage === 'duesManagement' && <DuesManagement users={users.length ? users : fallbackUsers} blocks={blocks} allDues={dues} siteInfo={siteInfo || {duesAmount: 500, bankName: '', iban: '', note: ''}} onUpdateDues={handleUpdateDues} />}
-          {currentPage === 'announcements' && <Announcements announcements={announcements} currentUser={currentUser} onUpdate={(id, t, c) => db.saveAnnouncement({...announcements.find(a => a.id === id)!, title: t, content: c})} onDelete={id => {}} />}
-          {currentPage === 'profile' && <ProfilePage currentUser={currentUser} onUpdateUser={handleUpdateUser} blocks={blocks} />}
+          {currentPage === 'dues' && <Dues currentUser={displayUser} allDues={dues} />}
+          {currentPage === 'duesManagement' && <DuesManagement users={users.length ? users : fallbackUsers} blocks={blocks} allDues={dues} siteInfo={siteInfo} onUpdateDues={handleUpdateDues} />}
+          {currentPage === 'announcements' && <Announcements announcements={announcements} currentUser={displayUser} onUpdate={(id, t, c) => db.saveAnnouncement({...announcements.find(a => a.id === id)!, title: t, content: c})} onDelete={id => {}} />}
+          {currentPage === 'profile' && <ProfilePage currentUser={displayUser} onUpdateUser={handleUpdateUser} blocks={blocks} />}
           {currentPage === 'expenses' && <Expenses expenses={expenses} onAddExpense={exp => db.saveExpense({...exp, id: Date.now()})} onDeleteExpense={id => {}} />}
-          {currentPage === 'feedback' && <FeedbackPage currentUser={currentUser} users={users.length ? users : fallbackUsers} blocks={blocks} feedbacks={feedbacks} onAddFeedback={(uid, t, s, c) => db.saveFeedback({id: Date.now(), userId: uid, type: t, subject: s, content: c, createdAt: new Date().toISOString(), status: 'Yeni'})} onUpdateStatus={(id, s) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: s})} onRespond={(id, r) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: 'Yanıtlandı', adminResponse: r, responseDate: new Date().toISOString()})} isResidentViewMode={forceResidentDashboard} />}
+          {currentPage === 'feedback' && <FeedbackPage currentUser={displayUser} users={users.length ? users : fallbackUsers} blocks={blocks} feedbacks={feedbacks} onAddFeedback={(uid, t, s, c) => db.saveFeedback({id: Date.now(), userId: uid, type: t, subject: s, content: c, createdAt: new Date().toISOString(), status: 'Yeni'})} onUpdateStatus={(id, s) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: s})} onRespond={(id, r) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: 'Yanıtlandı', adminResponse: r, responseDate: new Date().toISOString()})} isResidentViewMode={forceResidentDashboard} />}
           {currentPage === 'plateInquiry' && <PlateInquiry users={users.length ? users : fallbackUsers} blocks={blocks} />}
-          {currentPage === 'neighbors' && <Neighbors currentUser={currentUser} users={users.length ? users : fallbackUsers} blocks={blocks} connections={connections} messages={messages} onSendRequest={(req, res) => db.saveConnection({id: Date.now(), requesterId: req, receiverId: res, status: 'pending'})} onUpdateStatus={(id, s) => db.saveConnection({...connections.find(c => c.id === id)!, status: s})} onSendMessage={(s, r, c) => db.saveMessage({id: Date.now(), senderId: s, receiverId: r, content: c, timestamp: new Date().toISOString(), read: false})} />}
+          {currentPage === 'neighbors' && <Neighbors currentUser={displayUser} users={users.length ? users : fallbackUsers} blocks={blocks} connections={connections} messages={messages} onSendRequest={(req, res) => db.saveConnection({id: Date.now(), requesterId: req, receiverId: res, status: 'pending'})} onUpdateStatus={(id, s) => db.saveConnection({...connections.find(c => c.id === id)!, status: s})} onSendMessage={(s, r, c) => db.saveMessage({id: Date.now(), senderId: s, receiverId: r, content: c, timestamp: new Date().toISOString(), read: false})} />}
+          {currentPage === 'settings' && <Settings currentUser={displayUser} onUpdateUser={handleUpdateUser} setCurrentPage={setCurrentPage} siteInfo={siteInfo} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} />}
         </main>
       </div>
     </div>

@@ -15,6 +15,16 @@ interface DashboardProps {
     feedbacks?: Feedback[];
 }
 
+// --- SVG ICONS ---
+// Added missing icons used in the dashboard
+const UsersIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.995 5.995 0 0012 13a5.995 5.995 0 003-1.197" /></svg>;
+const CashIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
+const MegaphoneIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.358 1.84 18.668 1.5 19 1.5v12c.332 0 .642.34 1.832.944A4.001 4.001 0 0118 18.5a4.001 4.001 0 01-2.564-1.183M15 6a3 3 0 100 6" /></svg>;
+const BuildingIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m5-8h1m-1 4h1m-1 4h1M9 3v1m6-1v1" /></svg>;
+const ExclamationIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
+const InboxIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>;
+const UserAddIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className || "h-6 w-6"} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>;
+
 // --- UI KÜÇÜK BİLEŞENLER ---
 
 const LiveIndicator = () => (
@@ -38,7 +48,7 @@ const StatCard: React.FC<{
     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between group hover:shadow-md transition-all duration-300">
         <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate">{title}</p>
-            <h3 className="text-xl md:text-3xl font-black text-gray-800 truncate">{value}</h3>
+            <h3 className="text-xl md:text-3xl font-black text-gray-800">{value}</h3>
             {trend && (
                 <div className={`hidden md:flex items-center mt-3 text-xs font-bold px-2 py-0.5 rounded-full w-fit ${trend === 'up' ? 'bg-green-50 text-green-600' : trend === 'down' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'}`}>
                     {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '•'} 
@@ -99,7 +109,7 @@ const ManagerDashboard: React.FC<{
                             {/* SVG Donut Chart */}
                             <div className="flex flex-col items-center">
                                 <div className="relative group">
-                                    <svg className="w-40 h-40 md:w-48 md:h-48 transform -rotate-90">
+                                    <svg className="w-40 h-40 md:w-48 md:h-48 transform -rotate-90" viewBox="0 0 192 192">
                                         <circle cx="96" cy="96" r="80" stroke="#f3f4f6" strokeWidth="16" fill="transparent" />
                                         <circle 
                                             cx="96" cy="96" r="80" stroke="url(#blueGradient)" strokeWidth="16" fill="transparent" 
@@ -116,7 +126,7 @@ const ManagerDashboard: React.FC<{
                                         </defs>
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter">%{occupancyRate}</span>
+                                        <span className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">%{occupancyRate}</span>
                                         <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">Dolu</span>
                                     </div>
                                 </div>
@@ -240,137 +250,81 @@ const ManagerDashboard: React.FC<{
 // --- SAKİN GÖRÜNÜMÜ ---
 
 const ResidentDashboard: React.FC<{ 
-    user: User; 
-    users: User[];
-    blocks: Block[];
+    currentUser: User;
     dues: Dues[]; 
     announcements: Announcement[];
     siteInfo: SiteInfo;
     setCurrentPage: (page: Page) => void;
-}> = ({ user, users, blocks, dues, announcements, siteInfo, setCurrentPage }) => {
+}> = ({ currentUser, dues, announcements, siteInfo, setCurrentPage }) => {
+    const myDues = dues.filter(d => d.userId === currentUser.id);
+    const unpaidDues = myDues.filter(d => d.status === 'Ödenmedi');
     
-    const myUnpaidDues = useMemo(() => dues.filter(d => d.userId === user.id && d.status === 'Ödenmedi'), [dues, user]);
-    const totalDebt = myUnpaidDues.reduce((acc, curr) => acc + curr.amount, 0);
-
     return (
-        <div className="space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 mt-2">
-            <PlateInquiry users={users} blocks={blocks} />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
-                {/* Finance Card */}
-                <div className={`p-6 md:p-8 rounded-3xl shadow-md border-t-8 flex flex-col justify-between ${totalDebt > 0 ? 'bg-white border-rose-500' : 'bg-white border-green-500'}`}>
-                    <div>
-                        <div className="flex justify-between items-start mb-4 md:mb-6">
-                            <h3 className="text-lg md:text-xl font-black text-gray-900">Ödeme Durumu</h3>
-                            <div className={`p-3 md:p-4 rounded-2xl ${totalDebt > 0 ? 'bg-rose-50 text-rose-600' : 'bg-green-50 text-green-600'}`}>
-                                {totalDebt > 0 ? <ExclamationIcon /> : <ShieldCheckIcon />}
-                            </div>
-                        </div>
-                        <div className="mb-6 md:mb-8">
-                            <p className="text-3xl md:text-4xl font-black text-gray-900">₺{totalDebt.toLocaleString()}</p>
-                            <p className="text-[10px] md:text-sm font-bold text-gray-400 mt-2">
-                                {totalDebt > 0 ? `${myUnpaidDues.length} adet bekleyen ödeme` : 'Tüm borçlar temizlendi'}
-                            </p>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={() => setCurrentPage('dues')} 
-                        className={`w-full py-3 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-lg transition-all active:scale-95 ${totalDebt > 0 ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-green-600 text-white hover:bg-green-700'}`}
-                    >
-                        {totalDebt > 0 ? 'Hemen Öde' : 'Geçmişi Gör'}
-                    </button>
-                </div>
-
-                {/* Announcements Preview */}
-                <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
-                    <div className="flex justify-between items-center mb-4 md:mb-6">
-                        <h3 className="text-lg md:text-xl font-black text-gray-900 flex items-center">
-                            <MegaphoneIcon className="w-5 h-5 md:w-6 md:h-6 mr-2 md:mr-3 text-indigo-600" />
-                            Duyurular
-                        </h3>
-                        <button onClick={() => setCurrentPage('announcements')} className="text-[9px] md:text-xs font-black text-indigo-600 uppercase tracking-widest hover:underline">Tümünü Gör</button>
-                    </div>
-                    <div className="flex-1 space-y-3 md:space-y-4">
-                        {announcements.slice(0, 2).map((ann, i) => (
-                            <div key={ann.id} className={`p-4 md:p-5 rounded-2xl border ${i === 0 ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50 border-gray-100'}`}>
-                                <div className="flex justify-between items-center mb-1 md:mb-2">
-                                    <h4 className="font-bold text-sm md:text-base text-gray-800 truncate pr-2">{ann.title}</h4>
-                                    <span className="text-[9px] md:text-[10px] font-bold text-gray-400 whitespace-nowrap">{ann.date}</span>
-                                </div>
-                                <p className="text-xs md:text-sm text-gray-500 line-clamp-2">{ann.content}</p>
-                            </div>
-                        ))}
-                        {announcements.length === 0 && <p className="text-xs text-gray-400 italic">Duyuru bulunmuyor.</p>}
-                    </div>
-                </div>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Hoş Geldiniz, {currentUser.name}</h2>
+                <p className="text-gray-500">Site yönetim paneline hoş geldiniz. Buradan aidatlarınızı takip edebilir ve duyuruları inceleyebilirsiniz.</p>
             </div>
 
-            {/* Account Settings Shortcut */}
-            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-6">
-                <div className="flex items-center space-x-4 md:space-x-6 w-full md:w-auto">
-                    <div className="w-14 h-14 md:w-20 md:h-20 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-black text-xl md:text-2xl shrink-0">
-                        {user.name.charAt(0)}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Aidat Durumu</h3>
+                        <div className="p-2 bg-green-100 text-green-600 rounded-lg">
+                            <CashIcon className="w-6 h-6" />
+                        </div>
                     </div>
-                    <div className="min-w-0">
-                        <h3 className="text-lg md:text-xl font-black text-gray-900 truncate">{user.name}</h3>
-                        <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">{user.role}</p>
-                    </div>
+                    {unpaidDues.length > 0 ? (
+                        <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                            <p className="text-red-700 font-bold">{unpaidDues.length} adet ödenmemiş aidatınız bulunmaktadır.</p>
+                            <button onClick={() => setCurrentPage('dues')} className="mt-2 text-red-600 font-bold hover:underline">Detayları Gör</button>
+                        </div>
+                    ) : (
+                        <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                            <p className="text-green-700 font-bold">Tüm aidatlarınız ödenmiş görünüyor. Teşekkürler!</p>
+                        </div>
+                    )}
                 </div>
-                <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
-                    <div className="flex-1 md:flex-none bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-2xl border border-gray-100 text-center">
-                        <p className="text-[9px] font-bold text-gray-400 uppercase mb-1 tracking-widest">Plaka</p>
-                        <p className="text-sm md:text-lg font-black text-gray-800">{user.vehiclePlate1 || 'Yok'}</p>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Son Duyuru</h3>
+                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                            <MegaphoneIcon className="w-6 h-6" />
+                        </div>
                     </div>
-                    <button onClick={() => setCurrentPage('profile')} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 md:px-10 py-3 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-md hover:bg-indigo-700 transition-all active:scale-95">
-                        Profili Düzenle
-                    </button>
+                    {announcements.length > 0 ? (
+                        <div>
+                            <h4 className="font-bold text-gray-900">{announcements[0].title}</h4>
+                            <p className="text-sm text-gray-500 line-clamp-2 mt-1">{announcements[0].content}</p>
+                            <button onClick={() => setCurrentPage('announcements')} className="mt-2 text-indigo-600 font-bold hover:underline">Tümünü Gör</button>
+                        </div>
+                    ) : (
+                        <p className="text-gray-500 italic">Henüz bir duyuru bulunmuyor.</p>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
+// --- ANA DASHBOARD BİLEŞENİ ---
 
 const Dashboard: React.FC<DashboardProps> = (props) => {
-    const { currentUser, users, blocks, dues, announcements, siteInfo, setCurrentPage, isResidentViewMode, feedbacks } = props;
-    const showManagerView = currentUser.role === 'Yönetici' && !isResidentViewMode;
+    const { currentUser, isResidentViewMode } = props;
+    const isAdmin = currentUser.role === 'Yönetici' && !isResidentViewMode;
 
-    return (
-        <div className="max-w-7xl mx-auto px-1 md:px-2">
-            {showManagerView ? (
-                <ManagerDashboard 
-                    users={users} 
-                    blocks={blocks} 
-                    dues={dues} 
-                    announcements={announcements} 
-                    siteInfo={siteInfo}
-                    setCurrentPage={setCurrentPage}
-                    feedbacks={feedbacks || []}
-                />
-            ) : (
-                <ResidentDashboard 
-                    user={currentUser} 
-                    users={users}
-                    blocks={blocks}
-                    dues={dues} 
-                    announcements={announcements} 
-                    siteInfo={siteInfo}
-                    setCurrentPage={setCurrentPage}
-                />
-            )}
-        </div>
-    );
+    if (isAdmin) {
+        return <ManagerDashboard {...props} feedbacks={props.feedbacks || []} />;
+    }
+
+    return <ResidentDashboard 
+        currentUser={currentUser} 
+        dues={props.dues} 
+        announcements={props.announcements} 
+        siteInfo={props.siteInfo} 
+        setCurrentPage={props.setCurrentPage} 
+    />;
 };
-
-// --- ICON BİLEŞENLERİ ---
-
-const BuildingIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m5-8h1m-1 4h1m-1 4h1M9 3v1m6-1v1" /></svg>;
-const CashIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
-const MegaphoneIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.514C18.358 1.84 18.668 1.5 19 1.5v12c.332 0 .642.34 1.832.944A4.001 4.001 0 0118 18.5a4.001 4.001 0 01-2.564-1.183M15 6a3 3 0 100 6" /></svg>;
-const UserAddIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>;
-const ShieldCheckIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944a11.955 11.955 0 018.618-3.04 11.955 11.955 0 018.618 3.04A12.02 12.02 0 0021 5.944a11.955 11.955 0 01-2.382-1.008z" /></svg>;
-const UsersIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.995 5.995 0 0012 13a5.995 5.995 0 003-1.197" /></svg>;
-const ExclamationIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const InboxIcon = ({ className = "h-6 w-6" }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>;
 
 export default Dashboard;

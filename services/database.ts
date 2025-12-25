@@ -33,7 +33,8 @@ const DEFAULT_SITE_INFO: SiteInfo = {
     duesAmount: 500,
     bankName: "Site Yönetim Bankası",
     iban: "TR00 0000 0000 0000 0000 0000 00",
-    note: "Ödeme yaparken daire numaranızı belirtiniz."
+    note: "Ödeme yaparken daire numaranızı belirtiniz.",
+    isLoginActive: false
 };
 
 const clean = (data: any) => {
@@ -179,6 +180,21 @@ export const db = {
 
     saveSiteInfo: async (info: SiteInfo) => {
         await setDoc(doc(firestore, COLLECTIONS.SITE_INFO, 'main'), clean(info));
+    },
+
+    clearCollections: async (collectionsToClear: string[]) => {
+        const keys = collectionsToClear.map(k => (COLLECTIONS as any)[k.toUpperCase()]).filter(Boolean);
+        for (const collName of keys) {
+            const q = query(collection(firestore, collName));
+            const snapshot = await getDocs(q);
+            const batch = writeBatch(firestore);
+            snapshot.docs.forEach((docSnap) => {
+                // Yönetici hesabını (ID: 1) koru
+                if (collName === COLLECTIONS.USERS && docSnap.id === '1') return;
+                batch.delete(docSnap.ref);
+            });
+            await batch.commit();
+        }
     },
 
     seedDatabase: async (data: { users: User[], blocks: Block[], announcements: Announcement[] }) => {

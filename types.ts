@@ -67,6 +67,7 @@ export interface SiteInfo {
     iban: string;
     bankName: string;
     note: string;
+    isLoginActive?: boolean; // Yeni alan
 }
 
 export interface NeighborConnection {
