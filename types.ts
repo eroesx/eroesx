@@ -1,7 +1,7 @@
 
 export type UserRole = 'Yönetici' | 'Daire Sahibi' | 'Kiracı';
 
-export type Page = 'dashboard' | 'dues' | 'announcements' | 'users' | 'expenses' | 'settings' | 'admin' | 'blockManagement' | 'profile' | 'plateInquiry' | 'duesManagement' | 'neighbors' | 'feedback';
+export type Page = 'dashboard' | 'dues' | 'announcements' | 'users' | 'expenses' | 'settings' | 'admin' | 'blockManagement' | 'profile' | 'plateInquiry' | 'duesManagement' | 'neighbors' | 'feedback' | 'cashManagement';
 
 export interface NotificationPreferences {
     emailNotifications: boolean;
@@ -67,7 +67,8 @@ export interface SiteInfo {
     iban: string;
     bankName: string;
     note: string;
-    isLoginActive?: boolean; // Yeni alan
+    isLoginActive?: boolean; 
+    initialBalance?: number; // Kasadaki devreden/başlangıç tutarı
 }
 
 export interface NeighborConnection {
@@ -86,7 +87,7 @@ export interface ChatMessage {
     read: boolean;
 }
 
-export type FeedbackType = 'Şikayet' | 'Öneri' | 'İstek';
+export type FeedbackType = 'Şikayet' | 'Öneri' | 'İstek' | 'İtiraz';
 
 export interface Feedback {
     id: number;

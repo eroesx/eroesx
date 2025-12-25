@@ -10,6 +10,7 @@ interface HeaderProps {
   onLogout: () => void;
 }
 
+// Added missing 'cashManagement' property to satisfy Record<Page, string>
 const pageTitles: Record<Page, string> = {
   dashboard: 'Anasayfa',
   dues: 'Aidat Geçmişim',
@@ -23,7 +24,8 @@ const pageTitles: Record<Page, string> = {
   plateInquiry: 'Araç Plaka Sorgulama',
   duesManagement: 'Aidat Takibi & Analiz',
   neighbors: 'Komşular',
-  feedback: 'Öneri/Şikayet/İstek Formu'
+  feedback: 'Öneri/Şikayet/İstek Formu',
+  cashManagement: 'Kasa & Banka Yönetimi'
 };
 
 const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage, toggleSidebar, currentUser, onLogout }) => {

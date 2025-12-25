@@ -34,7 +34,8 @@ const DEFAULT_SITE_INFO: SiteInfo = {
     bankName: "Site Yönetim Bankası",
     iban: "TR00 0000 0000 0000 0000 0000 00",
     note: "Ödeme yaparken daire numaranızı belirtiniz.",
-    isLoginActive: false
+    isLoginActive: false,
+    initialBalance: 0
 };
 
 const clean = (data: any) => {
@@ -132,12 +133,20 @@ export const db = {
         await setDoc(doc(firestore, COLLECTIONS.ANNOUNCEMENTS, String(a.id)), clean(a));
     },
 
+    deleteAnnouncement: async (id: number) => {
+        await deleteDoc(doc(firestore, COLLECTIONS.ANNOUNCEMENTS, String(id)));
+    },
+
     saveDue: async (d: Dues) => {
         await setDoc(doc(firestore, COLLECTIONS.DUES, String(d.id)), clean(d));
     },
 
     saveExpense: async (e: Expense) => {
         await setDoc(doc(firestore, COLLECTIONS.EXPENSES, String(e.id)), clean(e));
+    },
+
+    deleteExpense: async (id: number) => {
+        await deleteDoc(doc(firestore, COLLECTIONS.EXPENSES, String(id)));
     },
 
     saveFeedback: async (f: Feedback) => {
@@ -189,7 +198,6 @@ export const db = {
             const snapshot = await getDocs(q);
             const batch = writeBatch(firestore);
             snapshot.docs.forEach((docSnap) => {
-                // Yönetici hesabını (ID: 1) koru
                 if (collName === COLLECTIONS.USERS && docSnap.id === '1') return;
                 batch.delete(docSnap.ref);
             });

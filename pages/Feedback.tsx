@@ -17,7 +17,7 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
     // Determine if we show Admin view (Inbox) or User view (Form)
     const isAdmin = currentUser.role === 'Yönetici' && !isResidentViewMode;
 
-    const [activeTab, setActiveTab] = useState<'inbox' | 'passwords' | 'form' | 'history'>('inbox');
+    const [activeTab, setActiveTab] = useState<'inbox' | 'passwords' | 'objections' | 'form' | 'history'>('inbox');
     
     // Switch to 'form' by default if not admin
     React.useEffect(() => {
@@ -86,9 +86,11 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
         // Şifre taleplerini genel kutudan ayır
         if (isAdmin) {
             if (activeTab === 'inbox') {
-                sorted = sorted.filter(f => f.subject !== 'Şifre Sıfırlama Talebi');
+                sorted = sorted.filter(f => f.subject !== 'Şifre Sıfırlama Talebi' && f.type !== 'İtiraz');
             } else if (activeTab === 'passwords') {
                 sorted = sorted.filter(f => f.subject === 'Şifre Sıfırlama Talebi');
+            } else if (activeTab === 'objections') {
+                sorted = sorted.filter(f => f.type === 'İtiraz');
             }
         }
 
@@ -118,6 +120,15 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
         }
         return { name: user.name, location, phone: user.contactNumber1 || '-' };
     };
+
+    // Counts for Admin Tabs
+    const counts = useMemo(() => {
+        return {
+            inbox: feedbacks.filter(f => f.status === 'Yeni' && f.subject !== 'Şifre Sıfırlama Talebi' && f.type !== 'İtiraz').length,
+            objections: feedbacks.filter(f => f.status === 'Yeni' && f.type === 'İtiraz').length,
+            passwords: feedbacks.filter(f => f.status === 'Yeni' && f.subject === 'Şifre Sıfırlama Talebi').length
+        };
+    }, [feedbacks]);
 
     // --- RENDERERS ---
 
@@ -216,6 +227,7 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
                                     <span className={`px-2 py-1 text-xs font-bold uppercase rounded-md ${
                                         fb.type === 'Şikayet' ? 'bg-red-100 text-red-700' :
                                         fb.type === 'Öneri' ? 'bg-blue-100 text-blue-700' :
+                                        fb.type === 'İtiraz' ? 'bg-rose-100 text-rose-700' :
                                         'bg-green-100 text-green-700'
                                     }`}>
                                         {fb.type}
@@ -260,7 +272,7 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
              <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
                 <h2 className="text-lg font-bold text-gray-800">
-                    {activeTab === 'passwords' ? '🔐 Şifre Sıfırlama Talepleri' : '📨 Gelen Bildirimler'}
+                    {activeTab === 'passwords' ? '🔐 Şifre Sıfırlama Talepleri' : (activeTab === 'objections' ? '⚠️ Aidat İtirazları' : '📨 Gelen Bildirimler')}
                 </h2>
                 <div className="flex flex-wrap gap-2">
                     {(['all', 'Yeni', 'Okundu', 'Yanıtlandı', 'Arşivlendi'] as const).map(status => (
@@ -296,6 +308,7 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
                                         <span className={`px-2 py-1 text-[10px] font-black uppercase rounded-md ${
                                             fb.type === 'Şikayet' ? 'bg-red-100 text-red-700' :
                                             fb.type === 'Öneri' ? 'bg-blue-100 text-blue-700' :
+                                            fb.type === 'İtiraz' ? 'bg-rose-100 text-rose-700' :
                                             'bg-green-100 text-green-700'
                                         }`}>
                                             {fb.type}
@@ -399,21 +412,30 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
              {isAdmin ? (
                 <div className="flex space-x-2 p-1 bg-white rounded-xl shadow-sm border border-gray-200">
                     {[
-                        { id: 'inbox', label: 'Gelen Bildirimler', icon: '📨' },
-                        { id: 'passwords', label: 'Şifre Talepleri', icon: '🔐' },
-                        { id: 'form', label: 'Yeni Form Oluştur', icon: '📝' }
+                        { id: 'inbox', label: 'Bildirimler', icon: '📨', count: counts.inbox },
+                        { id: 'objections', label: 'İtirazlar', icon: '⚠️', count: counts.objections },
+                        { id: 'passwords', label: 'Şifre Talepleri', icon: '🔐', count: counts.passwords },
+                        { id: 'form', label: 'Yeni Form', icon: '📝', count: 0 }
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 py-3 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                            className={`flex-1 py-3 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all relative ${
                                 activeTab === tab.id 
                                 ? 'bg-indigo-600 text-white shadow-lg' 
                                 : 'text-gray-500 hover:bg-gray-50'
                             }`}
                         >
                             <span>{tab.icon}</span>
-                            <span>{tab.label}</span>
+                            <span className="hidden sm:inline">{tab.label}</span>
+                            {tab.count > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white items-center justify-center">
+                                        {tab.count}
+                                    </span>
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -434,7 +456,7 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ currentUser, users, blocks,
                 </div>
              )}
 
-            {(activeTab === 'inbox' || activeTab === 'passwords') && isAdmin && renderInbox()}
+            {(activeTab === 'inbox' || activeTab === 'passwords' || activeTab === 'objections') && isAdmin && renderInbox()}
             {activeTab === 'form' && renderForm()}
             {activeTab === 'history' && !isAdmin && renderHistory()}
         </div>

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Block, Apartment, User } from '../types';
 
 interface BlockManagementProps {
@@ -13,6 +13,8 @@ interface BlockManagementProps {
     onUpdateApartment: (blockId: number, apartment: Apartment) => void;
     onDeleteApartment: (blockId: number, apartmentId: number) => void;
     onVacateApartment: (blockId: number, apartmentId: number) => void;
+    targetBlockId?: number | null;
+    onClearTargetBlock?: () => void;
 }
 
 const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
@@ -33,7 +35,7 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 };
 
 const BlockManagement: React.FC<BlockManagementProps> = (props) => {
-    const { blocks, users, onDeleteUser, onAddBlock, onUpdateBlock, onDeleteBlock, onAddApartment, onUpdateApartment } = props;
+    const { blocks, users, onDeleteUser, onAddBlock, onUpdateBlock, onDeleteBlock, onAddApartment, onUpdateApartment, targetBlockId, onClearTargetBlock } = props;
 
     const [isBlockModalOpen, setBlockModalOpen] = useState(false);
     const [isAptModalOpen, setAptModalOpen] = useState(false);
@@ -48,6 +50,21 @@ const BlockManagement: React.FC<BlockManagementProps> = (props) => {
     // Search and Accordion states
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedBlocks, setExpandedBlocks] = useState<number[]>([]);
+
+    // Handle targeting from external page
+    useEffect(() => {
+        if (targetBlockId) {
+            setExpandedBlocks(prev => Array.from(new Set([...prev, targetBlockId])));
+            // Scroll to targeted block
+            setTimeout(() => {
+                const element = document.getElementById(`block-${targetBlockId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+            onClearTargetBlock?.();
+        }
+    }, [targetBlockId, onClearTargetBlock]);
 
     const toggleBlock = (id: number) => {
         setExpandedBlocks(prev => 
@@ -82,7 +99,7 @@ const BlockManagement: React.FC<BlockManagementProps> = (props) => {
     }, [blocks, searchTerm, users]);
 
     // Expand all matching blocks when searching
-    React.useEffect(() => {
+    useEffect(() => {
         if (searchTerm.trim().length > 0) {
             setExpandedBlocks(filteredData.map(b => b.id));
         }
@@ -154,7 +171,7 @@ const BlockManagement: React.FC<BlockManagementProps> = (props) => {
                     const totalCount = block.apartments.length;
 
                     return (
-                        <div key={block.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300">
+                        <div key={block.id} id={`block-${block.id}`} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300">
                             {/* Block Header */}
                             <div 
                                 onClick={() => toggleBlock(block.id)}
