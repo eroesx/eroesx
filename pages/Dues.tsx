@@ -1,14 +1,15 @@
 
 import React, { useMemo, useState } from 'react';
-import { Dues as DuesType, User, SiteInfo } from '../types';
+import { Dues as DuesType, User, SiteInfo, Feedback } from '../types';
 
 interface DuesProps {
     currentUser: User;
     allDues: DuesType[];
     siteInfo: SiteInfo;
+    feedbacks: Feedback[];
 }
 
-const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo }) => {
+const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo, feedbacks }) => {
     const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -25,9 +26,19 @@ const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo }) => {
             const isPast = selectedYear < currentYear || (selectedYear === currentYear && idx < currentMonthIdx);
             const isCurrent = selectedYear === currentYear && idx === currentMonthIdx;
             
-            let status: 'Ödendi' | 'Ödenmedi' | 'Bekliyor' = 'Bekliyor';
+            let status: 'Ödendi' | 'Ödenmedi' | 'Bekliyor' | 'İtiraz Edildi' = 'Bekliyor';
+            
+            // Check for objection
+            const hasObjection = feedbacks.some(f => 
+                f.userId === currentUser.id && 
+                f.type === 'İtiraz' && 
+                f.subject.includes(monthStr)
+            );
+
             if (record?.status === 'Ödendi') {
                 status = 'Ödendi';
+            } else if (hasObjection) {
+                status = 'İtiraz Edildi';
             } else if (isPast || (isCurrent && record?.status === 'Ödenmedi')) {
                 status = 'Ödenmedi';
             }
@@ -36,10 +47,10 @@ const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo }) => {
                 monthName, 
                 status, 
                 amount: record?.amount || siteInfo.duesAmount,
-                date: record?.id ? 'Kayıtlı' : '-'
+                date: record?.id ? 'Kayıtlı' : (status === 'İtiraz Edildi' ? 'İncelemede' : '-')
             };
         });
-    }, [allDues, currentUser, selectedYear, currentYear, currentMonthIdx, siteInfo.duesAmount]);
+    }, [allDues, currentUser, selectedYear, currentYear, currentMonthIdx, siteInfo.duesAmount, feedbacks]);
 
     const totalPaid = useMemo(() => {
         return yearlyDuesStatus.filter(s => s.status === 'Ödendi').reduce((acc, s) => acc + s.amount, 0);
@@ -90,6 +101,7 @@ const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo }) => {
                         key={idx} 
                         className={`bg-white p-5 rounded-3xl border shadow-sm transition-all hover:shadow-md flex flex-col justify-between h-36 ${
                             item.status === 'Ödendi' ? 'border-green-100' : 
+                            item.status === 'İtiraz Edildi' ? 'border-blue-100 bg-blue-50/30' :
                             item.status === 'Ödenmedi' ? 'border-rose-100' : 
                             'border-gray-100 opacity-60'
                         }`}
@@ -98,6 +110,7 @@ const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo }) => {
                             <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[10px] ${
                                     item.status === 'Ödendi' ? 'bg-green-100 text-green-600' : 
+                                    item.status === 'İtiraz Edildi' ? 'bg-blue-100 text-blue-600' :
                                     item.status === 'Ödenmedi' ? 'bg-rose-100 text-rose-600' : 
                                     'bg-gray-100 text-gray-400'
                                 }`}>
@@ -110,6 +123,7 @@ const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo }) => {
                             </div>
                             <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${
                                 item.status === 'Ödendi' ? 'bg-green-50 text-green-600' : 
+                                item.status === 'İtiraz Edildi' ? 'bg-blue-50 text-blue-600' :
                                 item.status === 'Ödenmedi' ? 'bg-rose-50 text-rose-600' : 
                                 'bg-gray-50 text-gray-400'
                             }`}>
@@ -118,9 +132,12 @@ const Dues: React.FC<DuesProps> = ({ currentUser, allDues, siteInfo }) => {
                         </div>
                         
                         <div className="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center">
-                            <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Kayıt: {item.date}</span>
+                            <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Durum: {item.date}</span>
                             {item.status === 'Ödenmedi' && (
                                 <span className="text-[9px] font-black text-rose-500 animate-pulse uppercase">Borçlu</span>
+                            )}
+                            {item.status === 'İtiraz Edildi' && (
+                                <span className="text-[9px] font-black text-blue-500 uppercase">Beklemede</span>
                             )}
                         </div>
                     </div>

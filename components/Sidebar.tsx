@@ -1,6 +1,6 @@
 
 import React, { useMemo, useRef } from 'react';
-import { Page, User, UserRole, Feedback, ChatMessage } from '../types';
+import { Page, User, UserRole, Feedback, ChatMessage, NeighborConnection } from '../types';
 
 interface SidebarProps {
   currentPage: Page;
@@ -13,6 +13,7 @@ interface SidebarProps {
   feedbacks: Feedback[];
   messages: ChatMessage[];
   onLogout: () => void;
+  connections: NeighborConnection[];
 }
 
 // SVG Icons
@@ -91,7 +92,7 @@ const getNavItemsForRole = (role: UserRole): { page: Page; label: string; icon: 
 };
 
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSidebarOpen, setSidebarOpen, currentUser, onLogoDoubleClick, isResidentViewMode = false, feedbacks, messages, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSidebarOpen, setSidebarOpen, currentUser, onLogoDoubleClick, isResidentViewMode = false, feedbacks, messages, onLogout, connections }) => {
   
   const handleNavigation = (page: Page) => {
     setCurrentPage(page);
@@ -126,8 +127,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isSideba
   }, [feedbacks, currentUser, isResidentViewMode]);
 
   const unreadMessageCount = useMemo(() => {
-      return messages.filter(m => m.receiverId === currentUser.id && !m.read).length;
-  }, [messages, currentUser]);
+      const msgs = messages.filter(m => m.receiverId === currentUser.id && !m.read).length;
+      const reqs = connections.filter(c => c.receiverId === currentUser.id && c.status === 'pending').length;
+      return msgs + reqs;
+  }, [messages, currentUser, connections]);
 
   const totalTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clickCount = useRef(0);

@@ -274,6 +274,7 @@ const App: React.FC = () => {
         currentUser={displayUser} onLogoDoubleClick={() => setForceResidentDashboard(!forceResidentDashboard)}
         feedbacks={feedbacks} messages={messages}
         onLogout={handleLogout}
+        connections={connections}
       />
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Header 
@@ -283,7 +284,7 @@ const App: React.FC = () => {
         />
         <main className="flex-1 overflow-y-auto bg-slate-50">
           <div className="p-4 md:p-8">
-            {currentPage === 'dashboard' && <Dashboard currentUser={displayUser} users={users} blocks={blocks} dues={dues} announcements={announcements} siteInfo={siteInfo} messages={messages} setCurrentPage={setCurrentPage} isResidentViewMode={forceResidentDashboard} feedbacks={feedbacks} onUpdateUser={handleUpdateUser} expenses={expenses} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSelectBlock={(id) => setActiveBlockId(id)} onAddFeedback={handleAddFeedback} />}
+            {currentPage === 'dashboard' && <Dashboard currentUser={displayUser} users={users} blocks={blocks} dues={dues} announcements={announcements} siteInfo={siteInfo} messages={messages} setCurrentPage={setCurrentPage} isResidentViewMode={forceResidentDashboard} feedbacks={feedbacks} onUpdateUser={handleUpdateUser} expenses={expenses} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSelectBlock={(id) => setActiveBlockId(id)} onAddFeedback={handleAddFeedback} connections={connections} />}
             {currentPage === 'admin' && <AdminPanel onAddAnnouncement={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} setCurrentPage={setCurrentPage} siteInfo={siteInfo} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} onSeedDatabase={() => db.seedDatabase({ users: fallbackUsers, blocks: blocks.length ? blocks : [], announcements: announcements.length ? announcements : [] })} />}
             {currentPage === 'users' && <Users users={users.length ? users : fallbackUsers} blocks={blocks} onAddUserAndAssignment={handleAddUserAndAssignment} onUpdateUserAndAssignment={handleUpdateUserAndAssignment} onDeleteUser={handleDeleteUser} onToggleUserStatus={(id, status) => {
                 const u = users.find(user => user.id === id) || fallbackUsers.find(u => u.id === id);
@@ -302,12 +303,12 @@ const App: React.FC = () => {
                 const b = blocks.find(block => block.id === aid);
                 if (b) await db.saveBlock({...b, apartments: b.apartments.map(a => a.id === aid ? {...a, status: 'Boş', residentId: undefined} : a)});
             }} targetBlockId={activeBlockId} onClearTargetBlock={() => setActiveBlockId(null)} />}
-            {currentPage === 'dues' && siteInfo && <Dues currentUser={displayUser} allDues={dues} siteInfo={siteInfo} />}
+            {currentPage === 'dues' && siteInfo && <Dues currentUser={displayUser} allDues={dues} siteInfo={siteInfo} feedbacks={feedbacks} />}
             {currentPage === 'duesManagement' && <DuesManagement users={users.length ? users : fallbackUsers} blocks={blocks} allDues={dues} siteInfo={siteInfo} onUpdateDues={handleUpdateDues} />}
             {currentPage === 'announcements' && <Announcements announcements={announcements} currentUser={displayUser} onUpdate={(id, t, c) => db.saveAnnouncement({...announcements.find(a => a.id === id)!, title: t, content: c})} onDelete={id => db.deleteAnnouncement(id)} onAdd={(t, c) => db.saveAnnouncement({id: Date.now(), title: t, content: c, date: new Date().toLocaleDateString('tr-TR')})} isResidentViewMode={forceResidentDashboard} />}
             {currentPage === 'profile' && <ProfilePage currentUser={displayUser} onUpdateUser={handleUpdateUser} blocks={blocks} />}
             {currentPage === 'expenses' && <Expenses expenses={expenses} onAddExpense={exp => db.saveExpense({...exp, id: Date.now()})} onDeleteExpense={id => db.deleteExpense(id)} />}
-            {currentPage === 'feedback' && <FeedbackPage currentUser={displayUser} users={users.length ? users : fallbackUsers} blocks={blocks} feedbacks={feedbacks} onAddFeedback={handleAddFeedback} onUpdateStatus={(id, s) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: s})} onRespond={(id, r) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: 'Yanıtlandı', adminResponse: r, responseDate: new Date().toISOString()})} isResidentViewMode={forceResidentDashboard} />}
+            {currentPage === 'feedback' && siteInfo && <FeedbackPage currentUser={displayUser} users={users.length ? users : fallbackUsers} blocks={blocks} feedbacks={feedbacks} onAddFeedback={handleAddFeedback} onUpdateStatus={(id, s) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: s})} onRespond={(id, r) => db.saveFeedback({...feedbacks.find(f => f.id === id)!, status: 'Yanıtlandı', adminResponse: r, responseDate: new Date().toISOString()})} isResidentViewMode={forceResidentDashboard} onUpdateDues={handleUpdateDues} siteInfo={siteInfo} />}
             {currentPage === 'plateInquiry' && <PlateInquiry users={users.length ? users : fallbackUsers} blocks={blocks} />}
             {currentPage === 'neighbors' && <Neighbors currentUser={displayUser} users={users.length ? users : fallbackUsers} blocks={blocks} connections={connections} messages={messages} onMarkAsRead={handleMarkMessagesAsRead} onSendRequest={(req, res) => db.saveConnection({id: Date.now(), requesterId: req, receiverId: res, status: 'pending'})} onUpdateStatus={(id, s) => db.saveConnection({...connections.find(c => c.id === id)!, status: s})} onSendMessage={(s, r, c) => db.saveMessage({id: Date.now(), senderId: s, receiverId: r, content: c, timestamp: new Date().toISOString(), read: false})} />}
             {currentPage === 'settings' && <Settings currentUser={displayUser} onUpdateUser={handleUpdateUser} setCurrentPage={setCurrentPage} siteInfo={siteInfo} onUpdateSiteInfo={(info) => db.saveSiteInfo(info)} />}
