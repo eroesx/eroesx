@@ -710,9 +710,10 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
     const [errorDateFilter, setErrorDateFilter] = useState<string>('all');
     
     // Success Tab States
-    const [successFilterMonth, setSuccessFilterMonth] = useState<string>(months[currentMonthIdx]);
+    const [successFilterMonth, setSuccessFilterMonth] = useState<string>('all');
     const [successFilterYear, setSuccessFilterYear] = useState<number>(currentYear);
     const [successSearchTerm, setSuccessSearchTerm] = useState('');
+    const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([]);
 
 
     // Detail Modal State
@@ -1321,7 +1322,7 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
             const yearMatch = successFilterYear === yearNum;
             const monthMatch = successFilterMonth === 'all' || successFilterMonth === month;
             const nameMatch = !successSearchTerm.trim() || 
-                rec.detectedUser?.name.toLocaleLowerCase('tr-TR').includes(successSearchTerm.toLocaleLowerCase('tr-TR'));
+                (rec.detectedUser?.name || '').toLocaleLowerCase('tr-TR').includes(successSearchTerm.toLocaleLowerCase('tr-TR'));
             
             return yearMatch && monthMatch && nameMatch;
         });
@@ -1333,6 +1334,30 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
         });
     }, [importHistory, successFilterMonth, successFilterYear, successSearchTerm]);
 
+    const handleToggleHistorySelection = (id: string) => {
+        setSelectedHistoryIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const handleSelectAllHistory = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedHistoryIds(filteredSuccessfulRecords.map(rec => rec.id));
+        } else {
+            setSelectedHistoryIds([]);
+        }
+    };
+
+    const handleDeleteSelectedHistory = async () => {
+        if (selectedHistoryIds.length === 0) {
+            alert("Lütfen silmek istediğiniz kayıtları seçin.");
+            return;
+        }
+        if (window.confirm(`${selectedHistoryIds.length} adet geçmiş kaydı kalıcı olarak silinecektir. Bu işlem geri alınamaz. Emin misiniz?`)) {
+            await db.deleteImportHistoryRecords(selectedHistoryIds);
+            setSelectedHistoryIds([]); // Listener will update list, just clear selection state.
+        }
+    };
 
     const toggleMatchSelection = async (id: string) => {
         const newMatches = excelMatches.map(m => m.id === id ? { ...m, selected: !m.selected } : m);
@@ -1438,26 +1463,24 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                 />
             )}
 
-            <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between overflow-x-auto">
-                <div className="flex gap-1">
-                    {[
-                        { id: 'analysis', label: 'Analiz' },
-                        { id: 'list', label: 'Liste' },
-                        { id: 'import', label: 'Excel Aktar' },
-                        { id: 'errors', label: 'Hatalı Kayıtlar' },
-                        { id: 'success', label: 'Geçmiş İşlemler' }
-                    ].map(tab => (
-                        <button 
-                            key={tab.id} 
-                            onClick={() => setViewMode(tab.id as any)} 
-                            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'}`}
-                        >
-                            {tab.label}
-                            {tab.id === 'import' && excelMatches.length > 0 && <span className="ml-2 bg-white text-indigo-600 px-1.5 py-0.5 rounded-md text-[9px]">{excelMatches.length}</span>}
-                            {tab.id === 'errors' && unmatchedRecords.length > 0 && <span className="ml-2 bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-md text-[9px]">{unmatchedRecords.length}</span>}
-                        </button>
-                    ))}
-                </div>
+            <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 flex items-center flex-wrap gap-1">
+                {[
+                    { id: 'analysis', label: 'Analiz' },
+                    { id: 'list', label: 'Liste' },
+                    { id: 'import', label: 'Excel Aktar' },
+                    { id: 'errors', label: 'Hatalı Kayıtlar' },
+                    { id: 'success', label: 'Geçmiş İşlemler' }
+                ].map(tab => (
+                    <button 
+                        key={tab.id} 
+                        onClick={() => setViewMode(tab.id as any)} 
+                        className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'}`}
+                    >
+                        {tab.label}
+                        {tab.id === 'import' && excelMatches.length > 0 && <span className="ml-2 bg-white text-indigo-600 px-1.5 py-0.5 rounded-md text-[9px]">{excelMatches.length}</span>}
+                        {tab.id === 'errors' && unmatchedRecords.length > 0 && <span className="ml-2 bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-md text-[9px]">{unmatchedRecords.length}</span>}
+                    </button>
+                ))}
             </div>
 
             {userForModal && (
@@ -1666,194 +1689,49 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
             )}
 
             {viewMode === 'import' && (
-                <div className="animate-in fade-in duration-300 space-y-6">
-                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative overflow-hidden">
-                        <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
-                            <div>
-                                <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Banka Ekstresinden Aktarım</h2>
-                                <p className="text-xs text-gray-400 font-bold mt-1 uppercase tracking-widest">Excel dosyanızı yükleyin, sistem otomatik eşleştirsin.</p>
+                 <div className="animate-in fade-in duration-300 space-y-6">
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 items-end">
+                            <div className="lg:col-span-3">
+                                <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">BANKA EKSTRESİNDEN AKTARIM</h3>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">EXCEL DOSYANIZI YÜKLEYİN, SİSTEM OTOMATİK EŞLEŞTİRSİN.</p>
                             </div>
-                            <button 
-                                onClick={() => setIsConfigOpen(!isConfigOpen)} 
-                                className={`p-3 rounded-2xl transition-all ${isConfigOpen ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                                title="Yapılandırma"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            </button>
-                        </div>
-
-                        <div className={`overflow-hidden transition-all duration-300 ${isConfigOpen ? 'max-h-48 opacity-100 mb-8' : 'max-h-0 opacity-0'}`}>
-                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-gray-400 uppercase ml-1">Satır Başlangıcı</label><input type="number" value={localStartRow} onChange={e => setLocalStartRow(Number(e.target.value))} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold" /></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-gray-400 uppercase ml-1">Tarih Sütunu</label><input type="text" value={localDateCol} onChange={e => setLocalDateCol(e.target.value.toUpperCase())} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-center" /></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-gray-400 uppercase ml-1">Tutar Sütunu</label><input type="text" value={localAmountCol} onChange={e => setLocalAmountCol(e.target.value.toUpperCase())} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-center" /></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-gray-400 uppercase ml-1">Açıklama Sütunu</label><input type="text" value={localDescCol} onChange={e => setLocalDescCol(e.target.value.toUpperCase())} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-center" /></div>
-                                    <button onClick={saveImportConfig} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest h-[34px]">Kaydet</button>
-                                </div>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Aktarım Dönemi</label>
+                                <select value={importTargetMonthIdx} onChange={(e) => setImportTargetMonthIdx(Number(e.target.value))} className="bg-gray-50 border border-gray-100 rounded-xl text-xs font-black uppercase px-3 py-3 outline-none text-gray-700 cursor-pointer w-full">
+                                    {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                                </select>
                             </div>
-                        </div>
-
-                        <div className="flex flex-col md:flex-row gap-4 items-end">
-                            <div className="flex-1 w-full bg-gray-50 p-2 rounded-2xl border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
-                                <div className="space-y-1 flex-1 w-full">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2 block">Aktarım Dönemi</label>
-                                    <div className="flex gap-2">
-                                        <select value={importTargetMonthIdx} onChange={(e) => setImportTargetMonthIdx(Number(e.target.value))} className="flex-1 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl px-4 py-2.5 outline-none">
-                                            {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
-                                        </select>
-                                        <select value={importTargetYear} onChange={(e) => setImportTargetYear(Number(e.target.value))} className="w-24 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl px-4 py-2.5 outline-none">
-                                            {[currentYear + 1, currentYear, currentYear-1, currentYear-2].map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                    </div>
-                                    <label className="flex items-center mt-2 cursor-pointer ml-1">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={isImportListFilteredByDate} 
-                                            onChange={(e) => setIsImportListFilteredByDate(e.target.checked)} 
-                                            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" 
-                                        />
-                                        <span className="ml-2 text-[10px] font-bold text-gray-500 uppercase">Listeyi Tarihe Göre Filtrele</span>
-                                    </label>
-                                </div>
-                                <div className="space-y-1 w-full md:w-32">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase ml-2 block">Beklenen Tutar</label>
-                                    <input type="number" value={importExpectedAmount} onChange={e => setImportExpectedAmount(Number(e.target.value))} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none" />
-                                </div>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">&nbsp;</label>
+                                 <select value={importTargetYear} onChange={(e) => setImportTargetYear(Number(e.target.value))} className="bg-gray-50 border border-gray-100 rounded-xl text-xs font-black uppercase px-3 py-3 outline-none text-gray-700 cursor-pointer w-full">
+                                    {[currentYear, currentYear+1, currentYear-1, currentYear-2].map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
                             </div>
-                            <div className="w-full md:w-auto">
+                             <div className="space-y-1">
+                                <label className="text-[9px] font-black text-gray-400 uppercase ml-2 tracking-widest">Beklenen Tutar</label>
+                                <input type="number" value={importExpectedAmount} onChange={(e) => setImportExpectedAmount(Number(e.target.value))} className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold outline-none"/>
+                            </div>
+                            <div className="lg:col-span-2 pt-5">
+                                <label className="flex items-center cursor-pointer select-none">
+                                    <input type="checkbox" checked={isImportListFilteredByDate} onChange={e => setIsImportListFilteredByDate(e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"/>
+                                    <span className="ml-2 text-[10px] font-black uppercase text-gray-600">Listeyi Tarihe Göre Filtrele</span>
+                                </label>
+                            </div>
+                            <div className="lg:col-span-4 flex items-center gap-2">
+                                <button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="flex-1 py-4 bg-green-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+                                     {isProcessing ? 'İŞLENİYOR...' : 'DOSYA SEÇ VE YÜKLE'}
+                                </button>
                                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".xlsx, .xls" className="hidden" />
-                                <button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="w-full md:w-auto px-8 py-4 bg-green-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-green-700 shadow-lg shadow-green-100 transition-all active:scale-95 flex items-center justify-center gap-2 h-[72px]">
-                                    {isProcessing ? 'İşleniyor...' : 'Dosya Seç ve Yükle'}
+                                <button onClick={() => setIsConfigOpen(true)} className="p-4 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200 transition-all">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                 </button>
                             </div>
                         </div>
                     </div>
-
-                    {excelMatches.length > 0 && (
-                        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-6 border-b border-gray-50 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
-                                <div className="flex flex-wrap gap-2">
-                                    <button onClick={() => setImportFilter('all')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${importFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'}`}>Tümü ({excelMatches.length})</button>
-                                    <button onClick={() => setImportFilter('perfect')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${importFilter === 'perfect' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'}`}>Tam Eşleşme ({perfectMatchCount})</button>
-                                    <button onClick={() => setImportFilter('partial')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${importFilter === 'partial' ? 'bg-blue-500 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'}`}>Kısmi ({partialMatchCount})</button>
-                                    <button onClick={() => setImportFilter('duplicate')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${importFilter === 'duplicate' ? 'bg-amber-500 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'}`}>Mükerrer ({duplicateMatchCount})</button>
-                                    <button onClick={() => setImportFilter('error')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${importFilter === 'error' ? 'bg-rose-500 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'}`}>Hatalı ({errorMatchCount})</button>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <input 
-                                            type="text" 
-                                            value={descriptionSearchTerm} 
-                                            onChange={(e) => setDescriptionSearchTerm(e.target.value)} 
-                                            placeholder="Açıklamada Ara..." 
-                                            className="bg-gray-50 border border-gray-200 text-gray-700 text-[10px] font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
-                                        <select 
-                                            value={importDateFilter} 
-                                            onChange={(e) => setImportDateFilter(e.target.value)} 
-                                            className="bg-transparent text-[10px] font-bold text-gray-600 uppercase outline-none"
-                                        >
-                                            <option value="all">Tarih Filtrele: Tümü</option>
-                                            {uniqueImportDates.map((d: any) => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-                                    <button onClick={handleDeleteSelected} className="px-4 py-3 bg-white text-rose-500 border border-rose-200 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        Seçilenleri Sil
-                                    </button>
-                                    <button onClick={handleClearImportList} className="px-4 py-3 bg-white text-gray-500 border border-gray-200 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all">Temizle</button>
-                                    <button onClick={handleImportSubmit} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-lg active:scale-95 transition-all">Seçilenleri Aktar</button>
-                                </div>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                        <tr>
-                                            <th className="px-2 py-4 w-10 text-center">
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={filteredImportMatches.length > 0 && filteredImportMatches.every(m => m.selected)}
-                                                    onChange={handleSelectAllImport}
-                                                    className="w-5 h-5 rounded-lg cursor-pointer text-indigo-600 focus:ring-indigo-500"
-                                                />
-                                            </th>
-                                            <th className="px-2 py-4 w-28 whitespace-nowrap">Tarih</th>
-                                            <th className="px-2 py-4">Açıklama</th>
-                                            <th className="px-2 py-4 w-28 text-right pr-6">Tutar</th>
-                                            <th className="px-2 py-4 w-48 pl-6">Tespit Edilen</th>
-                                            <th className="px-2 py-4 text-right w-24">Durum</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {filteredImportMatches.map((match) => {
-                                            let rowClass = 'hover:bg-gray-50';
-                                            if (match.priority === 1) rowClass = 'bg-emerald-50/30 hover:bg-emerald-50/50';
-                                            else if (match.priority === 2 || match.priority === 3) rowClass = 'bg-blue-50/30 hover:bg-blue-50/50';
-                                            else if (match.priority === 4) rowClass = 'bg-amber-50/30 hover:bg-amber-50/50';
-                                            else if (match.priority === 5) rowClass = 'bg-rose-50/30 hover:bg-rose-50/50';
-
-                                            return (
-                                                <tr key={match.id} className={`transition-colors ${rowClass}`}>
-                                                    <td className="px-2 py-4 text-center">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={match.selected} 
-                                                            onChange={() => toggleMatchSelection(match.id)}
-                                                            className={`w-5 h-5 rounded-lg cursor-pointer transition-all ${match.priority === 1 ? 'text-emerald-600 focus:ring-emerald-500' : 'text-indigo-600 focus:ring-indigo-500'}`} 
-                                                        />
-                                                    </td>
-                                                    <td className="px-2 py-4 text-[11px] font-bold text-gray-500 whitespace-nowrap">{match.date}</td>
-                                                    <td className="px-2 py-4">
-                                                        <p className="text-[10px] font-bold text-gray-600 uppercase leading-tight max-w-lg">{highlightText(match.description, match.detectedUser?.name)}</p>
-                                                    </td>
-                                                    <td className="px-2 py-4 text-right pr-6">
-                                                        <span className={`text-xs font-black whitespace-nowrap ${Math.abs(match.amount - importExpectedAmount) > 0.1 ? 'text-amber-600' : 'text-gray-800'}`}>₺{match.amount.toLocaleString()}</span>
-                                                    </td>
-                                                    <td className="px-2 py-4 pl-6">
-                                                        <div className="flex flex-col">
-                                                            {match.detectedUser ? (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setCorrectionRecord(match);
-                                                                        setDetailModalYear(currentYear);
-                                                                    }}
-                                                                    className="text-left text-[11px] font-black text-indigo-700 uppercase tracking-tight hover:underline"
-                                                                >
-                                                                    {match.detectedUser.name}
-                                                                </button>
-                                                            ) : (
-                                                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-tight">-</span>
-                                                            )}
-                                                            <span className="text-[9px] text-gray-400 font-bold uppercase">{match.detectedLocation}</span>
-                                                            {match.warning && <span className="text-[8px] text-rose-500 font-black uppercase mt-0.5">{match.warning}</span>}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-2 py-4 text-right">
-                                                        <span 
-                                                            title={STATUS_DESCRIPTIONS[match.matchType || ''] || ''}
-                                                            className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase cursor-help ${
-                                                            match.priority === 1 ? 'bg-emerald-100 text-emerald-700' : 
-                                                            match.priority === 2 || match.priority === 3 ? 'bg-blue-100 text-blue-700' : 
-                                                            match.priority === 4 ? 'bg-amber-100 text-amber-700' :
-                                                            'bg-rose-100 text-rose-700'
-                                                        }`}>
-                                                            {match.matchType}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                 </div>
             )}
-
+            
             {viewMode === 'errors' && (
                 <div className="animate-in fade-in duration-300 space-y-6">
                     {/* Header for Errors */}
@@ -1903,7 +1781,22 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                                             <td className="px-4 py-4 text-right text-xs font-black text-gray-800">₺{match.amount.toLocaleString()}</td>
                                             <td className="px-4 py-4">
                                                 <div className="text-[10px] font-bold text-rose-600 uppercase">{match.warning || STATUS_DESCRIPTIONS[match.matchType || ''] || 'Bilinmiyor'}</div>
-                                                {match.detectedUser && <div className="text-[10px] text-gray-500">Olası: {match.detectedUser.name}</div>}
+                                                {match.detectedUser ? (
+                                                    <div className="text-[10px] text-gray-500">
+                                                        Olası:{' '}
+                                                        <button
+                                                            onClick={() => {
+                                                                setCorrectionRecord(match);
+                                                                setDetailModalYear(importTargetYear);
+                                                            }}
+                                                            className="font-bold text-indigo-600 hover:underline"
+                                                        >
+                                                            {match.detectedUser.name}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-[10px] text-gray-400 font-bold uppercase">Eşleşme Yok</div>
+                                                )}
                                             </td>
                                             <td className="px-4 py-4 text-right">
                                                 <button onClick={() => handleManualMatchStart(match)} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase hover:bg-indigo-100 transition-all">Manuel Eşle</button>
@@ -1922,15 +1815,24 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
                         <div className="flex flex-wrap gap-4 items-center justify-between">
                             <h3 className="text-lg font-black text-emerald-600 uppercase tracking-tight">Geçmiş Aktarımlar</h3>
-                            <div className="flex gap-2">
-                                <select value={successFilterYear} onChange={(e) => setSuccessFilterYear(Number(e.target.value))} className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none">
-                                    {[currentYear, currentYear-1, currentYear-2].map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                                <select value={successFilterMonth} onChange={(e) => setSuccessFilterMonth(e.target.value)} className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none">
-                                    <option value="all">Tüm Aylar</option>
-                                    {months.map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                                <input type="text" value={successSearchTerm} onChange={(e) => setSuccessSearchTerm(e.target.value)} placeholder="İsim Ara..." className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none w-32" />
+                            <div className="flex items-center gap-3">
+                                <div className="flex gap-2">
+                                    <select value={successFilterYear} onChange={(e) => setSuccessFilterYear(Number(e.target.value))} className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none">
+                                        {[currentYear, currentYear-1, currentYear-2].map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                    <select value={successFilterMonth} onChange={(e) => setSuccessFilterMonth(e.target.value)} className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none">
+                                        <option value="all">Tüm Aylar</option>
+                                        {months.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                    <input type="text" value={successSearchTerm} onChange={(e) => setSuccessSearchTerm(e.target.value)} placeholder="İsim Ara..." className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-xl px-3 py-2 outline-none w-32" />
+                                </div>
+                                <button 
+                                    onClick={handleDeleteSelectedHistory} 
+                                    disabled={selectedHistoryIds.length === 0}
+                                    className="px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-xl text-xs font-black uppercase hover:bg-rose-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Seçilenleri Sil
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1940,6 +1842,14 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                             <table className="w-full text-left">
                                 <thead className="bg-emerald-50/50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                     <tr>
+                                        <th className="px-4 py-4 w-10 text-center">
+                                            <input 
+                                                type="checkbox" 
+                                                onChange={handleSelectAllHistory}
+                                                checked={filteredSuccessfulRecords.length > 0 && selectedHistoryIds.length === filteredSuccessfulRecords.length}
+                                                className="rounded text-indigo-600 focus:ring-indigo-500" 
+                                            />
+                                        </th>
                                         <th className="px-6 py-4">Sakin</th>
                                         <th className="px-6 py-4">Aktarılan Dönem</th>
                                         <th className="px-6 py-4">İşlem Tarihi</th>
@@ -1948,8 +1858,16 @@ const DuesManagement: React.FC<DuesManagementProps> = ({ users, blocks, allDues,
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {filteredSuccessfulRecords.map((rec, idx) => (
-                                        <tr key={idx} className="hover:bg-emerald-50/10 transition-colors">
+                                    {filteredSuccessfulRecords.map(rec => (
+                                        <tr key={rec.id} className={`hover:bg-emerald-50/10 transition-colors ${selectedHistoryIds.includes(rec.id) ? 'bg-emerald-50' : ''}`}>
+                                            <td className="px-4 py-4 text-center">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={selectedHistoryIds.includes(rec.id)}
+                                                    onChange={() => handleToggleHistorySelection(rec.id)}
+                                                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                            </td>
                                             <td className="px-6 py-4 text-xs font-black text-gray-800 uppercase">{rec.detectedUser?.name}</td>
                                             <td className="px-6 py-4 text-[10px] font-bold text-indigo-600 uppercase">{rec.importedMonth}</td>
                                             <td className="px-6 py-4 text-[10px] text-gray-500 font-mono">{rec.date}</td>

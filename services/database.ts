@@ -175,6 +175,15 @@ export const db = {
         });
         await batch.commit();
     },
+
+    deleteImportHistoryRecords: async (ids: string[]) => {
+        const batch = writeBatch(firestore);
+        ids.forEach(id => {
+            const docRef = doc(firestore, COLLECTIONS.IMPORT_HISTORY, id);
+            batch.delete(docRef);
+        });
+        await batch.commit();
+    },
     // -------------------------------
 
     subscribeToSiteInfo: (callback: (info: SiteInfo) => void) => {
